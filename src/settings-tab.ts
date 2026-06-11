@@ -5,6 +5,8 @@ import { FileCategory, DeletePolicy, S3Provider, S3Config } from "./types";
 import { debounce } from "./utils";
 import { testS3Connection } from "./s3-client";
 
+type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
+
 const CATEGORY_ICONS: Record<string, string> = {
   image: "\ud83d\udcf7",
   video: "\ud83c\udfac",
@@ -23,7 +25,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
 
     new Setting(containerEl).setName(t("settingsTitle")).setHeading();
     this.renderSetupStatus(containerEl);
@@ -47,7 +49,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderSetupStatus(containerEl: HTMLElement): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const configured = this.isS3Configured();
     const statusEl = containerEl.createDiv({ cls: "attachment-imagebed-manager-status" });
     const icon = statusEl.createEl("span", {
@@ -62,7 +64,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderS3Settings(containerEl: HTMLElement): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
 
@@ -102,7 +104,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
         .addText((text) =>
           text.setValue(this.plugin.settings.s3.region).onChange((value) => {
             this.plugin.settings.s3.region = value.trim() || "us-east-1";
-            debouncedSave();
+            void debouncedSave();
           })
         );
     }
@@ -125,7 +127,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
           const s3Key = key as keyof S3Config;
           text.setValue(String(this.plugin.settings.s3[s3Key] || "")).onChange((value) => {
             (this.plugin.settings.s3 as Record<string, string>)[s3Key] = value.trim();
-            debouncedSave();
+            void debouncedSave();
           });
         });
     }
@@ -139,7 +141,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
           .setValue(String(this.plugin.settings.s3.pathTemplate || ""))
           .onChange((value) => {
             this.plugin.settings.s3.pathTemplate = value.trim();
-            debouncedSave();
+            void debouncedSave();
           })
       );
 
@@ -171,7 +173,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderGeneralSettings(containerEl: HTMLElement): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
 
@@ -224,7 +226,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
         .addText((text) =>
           text.setValue(String(this.plugin.settings.autoDeleteDelayHours)).onChange((value) => {
             this.plugin.settings.autoDeleteDelayHours = Math.max(0, Number(value) || 24);
-            debouncedSave();
+            void debouncedSave();
           })
         );
     }
@@ -250,7 +252,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
             text.setValue(String(this.plugin.settings.scanIntervalMinutes)).onChange((value) => {
               this.plugin.settings.scanIntervalMinutes = Number(value) || 30;
               this.plugin.configureAutoScan();
-              debouncedSave();
+              void debouncedSave();
             })
           );
 
@@ -260,7 +262,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
           .addText((text) =>
             text.setValue(String(this.plugin.settings.quietSeconds)).onChange((value) => {
               this.plugin.settings.quietSeconds = Number(value) || 0;
-              debouncedSave();
+              void debouncedSave();
             })
           );
 
@@ -270,7 +272,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
           .addText((text) =>
             text.setValue(String(this.plugin.settings.autoScanMinSizeMiB || 0)).onChange((value) => {
               this.plugin.settings.autoScanMinSizeMiB = Math.max(0, Number(value) || 0);
-              debouncedSave();
+              void debouncedSave();
             })
           );
       }
@@ -283,7 +285,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderFileTypeSettings(containerEl: HTMLElement): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     new Setting(containerEl).setName(t("fileTypes")).setHeading();
     containerEl.createEl("p", {
       text: t("fileTypesDesc"),
@@ -298,7 +300,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderCategory(containerEl: HTMLElement, category: FileCategory): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -388,7 +390,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderCustomExtensions(containerEl: HTMLElement): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -471,7 +473,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderLogSection(containerEl: HTMLElement): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const settings = this.plugin.settings;
 
     new Setting(containerEl).setName(t("recentLog")).setHeading();

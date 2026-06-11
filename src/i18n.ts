@@ -298,5 +298,5 @@ export function detectLocaleFromApp(getLanguage: () => string): string {
 export function t(locale: string, key: string, params: Record<string, unknown> = {}): string {
   const pack = I18N[locale] || I18N.en;
   const template = pack[key] || I18N.en[key] || key;
-  return template.replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? ""));
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? ""));
 }

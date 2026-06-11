@@ -1,6 +1,8 @@
 import { App, Modal, Setting } from "obsidian";
 import type AttachmentImagebedManagerPlugin from "./plugin";
 
+type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
+
 export class DryRunModal extends Modal {
   plugin: AttachmentImagebedManagerPlugin;
   count: number;
@@ -14,7 +16,7 @@ export class DryRunModal extends Modal {
   }
 
   onOpen(): void {
-    const t = this.plugin.t.bind(this.plugin);
+    const t: TranslateFn = this.plugin.t.bind(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new Setting(contentEl).setName(t("vaultScanTitle")).setHeading();

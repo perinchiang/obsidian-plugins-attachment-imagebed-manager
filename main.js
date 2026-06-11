@@ -1055,17 +1055,17 @@ var CandidateModal = class extends import_obsidian2.Modal {
     }
   }
   createPreview(candidate) {
-    const preview = import_obsidian2.activeDocument.createElement("div");
+    const preview = document.createElement("div");
     preview.className = "attachment-imagebed-manager-preview";
     if (isPreviewableImage(candidate.file.extension)) {
-      const image = import_obsidian2.activeDocument.createElement("img");
+      const image = document.createElement("img");
       image.src = this.app.vault.getResourcePath(candidate.file);
       image.alt = candidate.file.name;
       image.loading = "lazy";
       preview.appendChild(image);
       return preview;
     }
-    const badge = import_obsidian2.activeDocument.createElement("div");
+    const badge = document.createElement("div");
     badge.className = "attachment-imagebed-manager-file-badge";
     badge.textContent = candidate.file.extension.toUpperCase();
     preview.appendChild(badge);
@@ -1275,7 +1275,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
       new import_obsidian4.Setting(containerEl).setName(t2("region")).setDesc(t2("regionDesc")).addText(
         (text) => text.setValue(this.plugin.settings.s3.region).onChange((value) => {
           this.plugin.settings.s3.region = value.trim() || "us-east-1";
-          debouncedSave();
+          void debouncedSave();
         })
       );
     }
@@ -1294,14 +1294,14 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
         const s3Key = key;
         text.setValue(String(this.plugin.settings.s3[s3Key] || "")).onChange((value) => {
           this.plugin.settings.s3[s3Key] = value.trim();
-          debouncedSave();
+          void debouncedSave();
         });
       });
     }
     new import_obsidian4.Setting(containerEl).setName(t2("objectPathTemplate")).setDesc(t2("pathTemplateDesc")).addText(
       (text) => text.setPlaceholder("attachments/{ext}/{hash2}/{hash}.{ext}").setValue(String(this.plugin.settings.s3.pathTemplate || "")).onChange((value) => {
         this.plugin.settings.s3.pathTemplate = value.trim();
-        debouncedSave();
+        void debouncedSave();
       })
     );
     new import_obsidian4.Setting(containerEl).setName(t2("testConnection")).setDesc(t2("testConnectionDesc")).addButton(
@@ -1360,7 +1360,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
       new import_obsidian4.Setting(containerEl).setName(t2("deleteDelayHours")).setDesc(t2("deleteDelayHoursDesc")).addText(
         (text) => text.setValue(String(this.plugin.settings.autoDeleteDelayHours)).onChange((value) => {
           this.plugin.settings.autoDeleteDelayHours = Math.max(0, Number(value) || 24);
-          debouncedSave();
+          void debouncedSave();
         })
       );
     }
@@ -1378,19 +1378,19 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
           (text) => text.setValue(String(this.plugin.settings.scanIntervalMinutes)).onChange((value) => {
             this.plugin.settings.scanIntervalMinutes = Number(value) || 30;
             this.plugin.configureAutoScan();
-            debouncedSave();
+            void debouncedSave();
           })
         );
         new import_obsidian4.Setting(containerEl).setName(t2("quietSeconds")).setDesc(t2("quietSecondsDesc")).addText(
           (text) => text.setValue(String(this.plugin.settings.quietSeconds)).onChange((value) => {
             this.plugin.settings.quietSeconds = Number(value) || 0;
-            debouncedSave();
+            void debouncedSave();
           })
         );
         new import_obsidian4.Setting(containerEl).setName(t2("autoScanMinSize")).setDesc(t2("autoScanMinSizeDesc")).addText(
           (text) => text.setValue(String(this.plugin.settings.autoScanMinSizeMiB || 0)).onChange((value) => {
             this.plugin.settings.autoScanMinSizeMiB = Math.max(0, Number(value) || 0);
-            debouncedSave();
+            void debouncedSave();
           })
         );
       }
