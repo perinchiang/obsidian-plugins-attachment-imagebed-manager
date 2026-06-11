@@ -8,7 +8,7 @@
 
 /* ═══ Summary / description text ═══ */
 .attachment-imagebed-manager-summary {
-  margin: 0 0 18px;
+  margin: 0 0 24px;
   color: var(--text-muted);
   font-size: 13.5px;
   line-height: 1.55;
@@ -18,7 +18,7 @@
 .attachment-imagebed-manager-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   max-height: 52vh;
   overflow: auto;
 }
@@ -26,11 +26,11 @@
 .attachment-imagebed-manager-row {
   display: grid;
   grid-template-columns: 28px 72px minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  padding: 14px 12px;
+  padding: 18px 14px;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: 10px;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -86,7 +86,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 22px;
+  margin-top: 28px;
 }
 
 /* ═══ Progress bar (slim modern style) ═══ */
@@ -101,8 +101,8 @@
 .attachment-imagebed-manager-delete-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 14px 0;
+  gap: 10px;
+  margin: 18px 0;
   max-height: 28vh;
   overflow: auto;
 }
@@ -118,16 +118,16 @@
 }
 
 .attachment-imagebed-manager-rule {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
 /* ═══ Category card (collapsible) ═══ */
 .attachment-imagebed-manager-category {
-  padding: 16px 16px;
-  margin: 10px 0;
+  padding: 20px 20px;
+  margin: 16px 0;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
+  border-radius: 12px;
   transition: border-color 0.15s ease;
 }
 
@@ -138,7 +138,7 @@
 .attachment-imagebed-manager-category-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: default;
 }
 
@@ -193,16 +193,16 @@
 
 .attachment-imagebed-manager-category-body {
   border-top: 1px solid var(--background-modifier-border);
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
 }
 
 /* ═══ Extension chips ═══ */
 .attachment-imagebed-manager-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 0 4px;
+  gap: 10px;
+  padding: 8px 0 6px;
 }
 
 .attachment-imagebed-manager-chip {
@@ -234,7 +234,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 8px 0;
+  padding: 10px 0;
 }
 
 .attachment-imagebed-manager-custom-input-row input[type="text"] {
@@ -244,8 +244,8 @@
 .attachment-imagebed-manager-custom-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 10px;
+  padding: 8px 0;
 }
 
 .attachment-imagebed-manager-custom-tag {
@@ -293,7 +293,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  margin: 6px 0 18px;
+  margin: 6px 0 24px;
   border-radius: 10px;
   font-size: 14px;
 }
@@ -314,10 +314,10 @@
 
 /* ═══ Guide / help text box ═══ */
 .attachment-imagebed-manager-guide {
-  margin: 0 0 20px;
-  padding: 12px 16px;
+  margin: 0 0 28px;
+  padding: 16px 20px;
   background: var(--background-secondary);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.55;
@@ -332,7 +332,7 @@
 .attachment-imagebed-manager-view-toggle {
   display: flex;
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .attachment-imagebed-manager-view-toggle button {
@@ -362,7 +362,7 @@
 .attachment-imagebed-manager-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
+  gap: 18px;
   max-height: 52vh;
   overflow: auto;
   padding: 6px 0;
@@ -370,7 +370,7 @@
 
 .attachment-imagebed-manager-gallery-card {
   border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--background-secondary);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -405,7 +405,7 @@
 }
 
 .attachment-imagebed-manager-gallery-info {
-  padding: 8px 10px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -439,7 +439,7 @@
 /* ═══ Modal layout: sidebar + main content ═══ */
 .attachment-imagebed-manager-modal-layout {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   min-height: 300px;
 }
 
@@ -448,7 +448,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 6px 0;
 }
 
@@ -456,7 +456,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -500,8 +500,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 18px;
-  padding-top: 14px;
+  margin-top: 24px;
+  padding-top: 18px;
   border-top: 1px solid var(--background-modifier-border);
 }
 
