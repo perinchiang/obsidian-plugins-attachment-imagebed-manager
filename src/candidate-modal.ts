@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Setting, TFile } from "obsidian";
+import { App, Modal, Notice, Setting, TFile, createDiv } from "obsidian";
 import type AttachmentImagebedManagerPlugin from "./plugin";
 import { Candidate, ProgressState, LocalFileRecord } from "./types";
 import { formatBytes, isPreviewableImage } from "./utils";
@@ -13,6 +13,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   audio: "\ud83c\udfb5",
   document: "\ud83d\udcc4",
 };
+
+function makeT(plugin: { t: (key: string, params?: Record<string, unknown>) => string }): TranslateFn {
+  return (key, params) => plugin.t(key, params);
+}
 
 export class CandidateModal extends Modal {
   plugin: AttachmentImagebedManagerPlugin;
@@ -59,7 +63,7 @@ export class CandidateModal extends Modal {
   private renderContent(): void {
     const { contentEl } = this;
     contentEl.empty();
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
 
     new Setting(contentEl).setName(t("replaceTitle")).setHeading();
     contentEl.createEl("p", {
@@ -111,7 +115,7 @@ export class CandidateModal extends Modal {
   }
 
   private renderSidebar(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const counts = this.getCategoryCounts();
     const sidebar = containerEl.createDiv({ cls: "attachment-imagebed-manager-sidebar" });
 
@@ -158,7 +162,7 @@ export class CandidateModal extends Modal {
   }
 
   private renderViewToggle(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const toggleEl = containerEl.createDiv({ cls: "attachment-imagebed-manager-view-toggle" });
 
     const listBtn = toggleEl.createEl("button", {
@@ -185,7 +189,7 @@ export class CandidateModal extends Modal {
   }
 
   private renderListView(containerEl: HTMLElement, filtered: Candidate[]): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const list = containerEl.createDiv({ cls: "attachment-imagebed-manager-list" });
     for (const candidate of filtered) {
       const row = list.createDiv({ cls: "attachment-imagebed-manager-row" });
@@ -241,25 +245,23 @@ export class CandidateModal extends Modal {
   }
 
   createPreview(candidate: Candidate): HTMLElement {
-    const preview = document.createElement("div");
-    preview.className = "attachment-imagebed-manager-preview";
+    const preview = createDiv({ cls: "attachment-imagebed-manager-preview" });
     if (isPreviewableImage(candidate.file.extension)) {
-      const image = document.createElement("img");
+      const image = preview.createEl("img");
       image.src = this.app.vault.getResourcePath(candidate.file);
       image.alt = candidate.file.name;
       image.loading = "lazy";
-      preview.appendChild(image);
       return preview;
     }
-    const badge = document.createElement("div");
-    badge.className = "attachment-imagebed-manager-file-badge";
-    badge.textContent = candidate.file.extension.toUpperCase();
-    preview.appendChild(badge);
+    preview.createDiv({
+      cls: "attachment-imagebed-manager-file-badge",
+      text: candidate.file.extension.toUpperCase(),
+    });
     return preview;
   }
 
   async replaceSelected(): Promise<void> {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const chosen = this.candidates.filter((c) => this.selected.has(c.file.path));
     if (!chosen.length) {
       new Notice(t("noSelected"));
@@ -281,7 +283,7 @@ export class CandidateModal extends Modal {
   }
 
   renderProgress(total: number): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new Setting(contentEl).setName(t("uploadingTitle")).setHeading();
@@ -302,7 +304,7 @@ export class CandidateModal extends Modal {
 
   updateProgress(state: ProgressState): void {
     if (!this.progressBar || !this.progressText) return;
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const total = Math.max(1, state.total || 1);
     const value = Math.min(100, Math.round(((state.current || 0) / total) * 100));
     this.progressBar.value = value;
@@ -319,7 +321,7 @@ export class CandidateModal extends Modal {
   }
 
   renderDeleteConfirmation(localFiles: LocalFileRecord[]): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new Setting(contentEl).setName(t("linksReplacedTitle")).setHeading();
@@ -361,7 +363,7 @@ export class CandidateModal extends Modal {
   }
 
   renderError(error: Error): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.createEl("p", {
       text: error.message || String(error),

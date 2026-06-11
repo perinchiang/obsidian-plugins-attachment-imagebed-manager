@@ -7,6 +7,10 @@ import { testS3Connection } from "./s3-client";
 
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
 
+function makeT(plugin: { t: (key: string, params?: Record<string, unknown>) => string }): TranslateFn {
+  return (key, params) => plugin.t(key, params);
+}
+
 const CATEGORY_ICONS: Record<string, string> = {
   image: "\ud83d\udcf7",
   video: "\ud83c\udfac",
@@ -25,7 +29,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
 
     new Setting(containerEl).setName(t("settingsTitle")).setHeading();
     this.renderSetupStatus(containerEl);
@@ -49,7 +53,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderSetupStatus(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const configured = this.isS3Configured();
     const statusEl = containerEl.createDiv({ cls: "attachment-imagebed-manager-status" });
     const icon = statusEl.createEl("span", {
@@ -64,7 +68,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderS3Settings(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
 
@@ -126,7 +130,17 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
           text.setPlaceholder(isPassword ? "********" : "");
           const s3Key = key as keyof S3Config;
           text.setValue(String(this.plugin.settings.s3[s3Key] || "")).onChange((value) => {
-            (this.plugin.settings.s3 as Record<string, string>)[s3Key] = value.trim();
+            const trimmed = value.trim();
+            switch (s3Key) {
+              case "endpoint": this.plugin.settings.s3.endpoint = trimmed; break;
+              case "bucketName": this.plugin.settings.s3.bucketName = trimmed; break;
+              case "accessKeyId": this.plugin.settings.s3.accessKeyId = trimmed; break;
+              case "secretAccessKey": this.plugin.settings.s3.secretAccessKey = trimmed; break;
+              case "customDomainName": this.plugin.settings.s3.customDomainName = trimmed; break;
+              case "pathTemplate": this.plugin.settings.s3.pathTemplate = trimmed; break;
+              case "provider": this.plugin.settings.s3.provider = trimmed as S3Provider; break;
+              case "region": this.plugin.settings.s3.region = trimmed; break;
+            }
             void debouncedSave();
           });
         });
@@ -173,7 +187,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderGeneralSettings(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
 
@@ -285,7 +299,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderFileTypeSettings(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     new Setting(containerEl).setName(t("fileTypes")).setHeading();
     containerEl.createEl("p", {
       text: t("fileTypesDesc"),
@@ -300,7 +314,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderCategory(containerEl: HTMLElement, category: FileCategory): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -390,7 +404,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderCustomExtensions(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -473,7 +487,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
   }
 
   private renderLogSection(containerEl: HTMLElement): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const settings = this.plugin.settings;
 
     new Setting(containerEl).setName(t("recentLog")).setHeading();

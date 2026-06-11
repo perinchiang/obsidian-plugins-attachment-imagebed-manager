@@ -853,6 +853,9 @@ var CATEGORY_ICONS = {
   audio: "\u{1F3B5}",
   document: "\u{1F4C4}"
 };
+function makeT(plugin) {
+  return (key, params) => plugin.t(key, params);
+}
 var CandidateModal = class extends import_obsidian2.Modal {
   plugin;
   noteFile;
@@ -894,7 +897,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
   renderContent() {
     const { contentEl } = this;
     contentEl.empty();
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     new import_obsidian2.Setting(contentEl).setName(t2("replaceTitle")).setHeading();
     contentEl.createEl("p", {
       text: t2("candidateSummary", { path: this.noteFile.path, count: this.candidates.length }),
@@ -934,7 +937,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     );
   }
   renderSidebar(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const counts = this.getCategoryCounts();
     const sidebar = containerEl.createDiv({ cls: "attachment-imagebed-manager-sidebar" });
     const allItem = sidebar.createDiv({
@@ -975,7 +978,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     }
   }
   renderViewToggle(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const toggleEl = containerEl.createDiv({ cls: "attachment-imagebed-manager-view-toggle" });
     const listBtn = toggleEl.createEl("button", {
       text: t2("viewList"),
@@ -999,7 +1002,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     });
   }
   renderListView(containerEl, filtered) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const list = containerEl.createDiv({ cls: "attachment-imagebed-manager-list" });
     for (const candidate of filtered) {
       const row = list.createDiv({ cls: "attachment-imagebed-manager-row" });
@@ -1055,24 +1058,22 @@ var CandidateModal = class extends import_obsidian2.Modal {
     }
   }
   createPreview(candidate) {
-    const preview = document.createElement("div");
-    preview.className = "attachment-imagebed-manager-preview";
+    const preview = (0, import_obsidian2.createDiv)({ cls: "attachment-imagebed-manager-preview" });
     if (isPreviewableImage(candidate.file.extension)) {
-      const image = document.createElement("img");
+      const image = preview.createEl("img");
       image.src = this.app.vault.getResourcePath(candidate.file);
       image.alt = candidate.file.name;
       image.loading = "lazy";
-      preview.appendChild(image);
       return preview;
     }
-    const badge = document.createElement("div");
-    badge.className = "attachment-imagebed-manager-file-badge";
-    badge.textContent = candidate.file.extension.toUpperCase();
-    preview.appendChild(badge);
+    preview.createDiv({
+      cls: "attachment-imagebed-manager-file-badge",
+      text: candidate.file.extension.toUpperCase()
+    });
     return preview;
   }
   async replaceSelected() {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const chosen = this.candidates.filter((c) => this.selected.has(c.file.path));
     if (!chosen.length) {
       new import_obsidian2.Notice(t2("noSelected"));
@@ -1093,7 +1094,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     }
   }
   renderProgress(total) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new import_obsidian2.Setting(contentEl).setName(t2("uploadingTitle")).setHeading();
@@ -1114,7 +1115,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
   updateProgress(state) {
     if (!this.progressBar || !this.progressText)
       return;
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const total = Math.max(1, state.total || 1);
     const value = Math.min(100, Math.round((state.current || 0) / total * 100));
     this.progressBar.value = value;
@@ -1130,7 +1131,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     this.progressText.setText(`${phaseText}: ${state.label || ""} (${state.current || 0}/${total})`);
   }
   renderDeleteConfirmation(localFiles) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new import_obsidian2.Setting(contentEl).setName(t2("linksReplacedTitle")).setHeading();
@@ -1166,7 +1167,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     );
   }
   renderError(error) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.createEl("p", {
       text: error.message || String(error),
@@ -1181,6 +1182,9 @@ var CandidateModal = class extends import_obsidian2.Modal {
 
 // src/dry-run-modal.ts
 var import_obsidian3 = require("obsidian");
+function makeT2(plugin) {
+  return (key, params) => plugin.t(key, params);
+}
 var DryRunModal = class extends import_obsidian3.Modal {
   plugin;
   count;
@@ -1192,7 +1196,7 @@ var DryRunModal = class extends import_obsidian3.Modal {
     this.samples = samples;
   }
   onOpen() {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT2(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new import_obsidian3.Setting(contentEl).setName(t2("vaultScanTitle")).setHeading();
@@ -1208,6 +1212,9 @@ var DryRunModal = class extends import_obsidian3.Modal {
 
 // src/settings-tab.ts
 var import_obsidian4 = require("obsidian");
+function makeT3(plugin) {
+  return (key, params) => plugin.t(key, params);
+}
 var CATEGORY_ICONS2 = {
   image: "\u{1F4F7}",
   video: "\u{1F3AC}",
@@ -1223,7 +1230,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     new import_obsidian4.Setting(containerEl).setName(t2("settingsTitle")).setHeading();
     this.renderSetupStatus(containerEl);
     this.renderS3Settings(containerEl);
@@ -1238,7 +1245,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     return !!(s3.endpoint.trim() && s3.bucketName.trim() && s3.accessKeyId.trim() && s3.secretAccessKey.trim() && s3.customDomainName.trim());
   }
   renderSetupStatus(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     const configured = this.isS3Configured();
     const statusEl = containerEl.createDiv({ cls: "attachment-imagebed-manager-status" });
     const icon = statusEl.createEl("span", {
@@ -1250,7 +1257,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     });
   }
   renderS3Settings(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
     new import_obsidian4.Setting(containerEl).setName(t2("s3Storage")).setHeading();
@@ -1293,7 +1300,33 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
         text.setPlaceholder(isPassword ? "********" : "");
         const s3Key = key;
         text.setValue(String(this.plugin.settings.s3[s3Key] || "")).onChange((value) => {
-          this.plugin.settings.s3[s3Key] = value.trim();
+          const trimmed = value.trim();
+          switch (s3Key) {
+            case "endpoint":
+              this.plugin.settings.s3.endpoint = trimmed;
+              break;
+            case "bucketName":
+              this.plugin.settings.s3.bucketName = trimmed;
+              break;
+            case "accessKeyId":
+              this.plugin.settings.s3.accessKeyId = trimmed;
+              break;
+            case "secretAccessKey":
+              this.plugin.settings.s3.secretAccessKey = trimmed;
+              break;
+            case "customDomainName":
+              this.plugin.settings.s3.customDomainName = trimmed;
+              break;
+            case "pathTemplate":
+              this.plugin.settings.s3.pathTemplate = trimmed;
+              break;
+            case "provider":
+              this.plugin.settings.s3.provider = trimmed;
+              break;
+            case "region":
+              this.plugin.settings.s3.region = trimmed;
+              break;
+          }
           void debouncedSave();
         });
       });
@@ -1328,7 +1361,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     );
   }
   renderGeneralSettings(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
     new import_obsidian4.Setting(containerEl).setName(t2("generalSettings")).setHeading();
@@ -1402,7 +1435,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     }
   }
   renderFileTypeSettings(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     new import_obsidian4.Setting(containerEl).setName(t2("fileTypes")).setHeading();
     containerEl.createEl("p", {
       text: t2("fileTypesDesc"),
@@ -1414,7 +1447,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     this.renderCustomExtensions(containerEl);
   }
   renderCategory(containerEl, category) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -1490,7 +1523,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     });
   }
   renderCustomExtensions(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -1567,7 +1600,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     }
   }
   renderLogSection(containerEl) {
-    const t2 = this.plugin.t.bind(this.plugin);
+    const t2 = makeT3(this.plugin);
     const settings = this.plugin.settings;
     new import_obsidian4.Setting(containerEl).setName(t2("recentLog")).setHeading();
     if ((settings.pendingDeletes || []).length) {
@@ -1725,7 +1758,7 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
       return;
     try {
       this.ensureS3Settings();
-    } catch (_error) {
+    } catch {
     }
     const minBytes = Math.max(0, Number(this.settings.autoScanMinSizeMiB) || 0) * 1024 * 1024;
     const files = this.app.vault.getMarkdownFiles();

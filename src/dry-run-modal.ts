@@ -3,6 +3,10 @@ import type AttachmentImagebedManagerPlugin from "./plugin";
 
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
 
+function makeT(plugin: { t: (key: string, params?: Record<string, unknown>) => string }): TranslateFn {
+  return (key, params) => plugin.t(key, params);
+}
+
 export class DryRunModal extends Modal {
   plugin: AttachmentImagebedManagerPlugin;
   count: number;
@@ -16,7 +20,7 @@ export class DryRunModal extends Modal {
   }
 
   onOpen(): void {
-    const t: TranslateFn = this.plugin.t.bind(this.plugin);
+    const t = makeT(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
     new Setting(contentEl).setName(t("vaultScanTitle")).setHeading();

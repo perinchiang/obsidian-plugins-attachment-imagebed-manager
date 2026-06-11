@@ -171,7 +171,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     if (!this.settings.enabled || !this.settings.autoScanEnabled) return;
     try {
       this.ensureS3Settings();
-    } catch (_error) {
+    } catch {
       // S3 not configured, skip auto scan silently
     }
     const minBytes = Math.max(0, Number(this.settings.autoScanMinSizeMiB) || 0) * 1024 * 1024;
