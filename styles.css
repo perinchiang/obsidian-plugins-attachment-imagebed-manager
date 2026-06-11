@@ -1,17 +1,24 @@
+/* ── Attachment Imagebed Manager — UI Styles ── */
+
+/* ═══ Modal container ═══ */
 .attachment-imagebed-manager-modal {
   max-width: 920px;
   width: min(920px, 92vw);
 }
 
+/* ═══ Summary / description text ═══ */
 .attachment-imagebed-manager-summary {
-  margin: 0 0 12px;
+  margin: 0 0 18px;
   color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.55;
 }
 
+/* ═══ List view ═══ */
 .attachment-imagebed-manager-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   max-height: 52vh;
   overflow: auto;
 }
@@ -19,18 +26,24 @@
 .attachment-imagebed-manager-row {
   display: grid;
   grid-template-columns: 28px 72px minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 8px;
+  padding: 14px 12px;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
+.attachment-imagebed-manager-row:hover {
+  background-color: var(--background-secondary);
+}
+
+/* ═══ Preview thumbnail (list) ═══ */
 .attachment-imagebed-manager-preview {
   width: 72px;
   height: 54px;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--background-secondary);
   display: flex;
@@ -48,77 +61,91 @@
   font-weight: 700;
   font-size: 12px;
   color: var(--text-muted);
-  letter-spacing: 0;
+  letter-spacing: 0.5px;
   max-width: 64px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* ═══ Text elements ═══ */
 .attachment-imagebed-manager-title {
   font-weight: 600;
+  font-size: 13.5px;
   overflow-wrap: anywhere;
 }
 
 .attachment-imagebed-manager-meta {
   color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
+/* ═══ Action buttons bar ═══ */
 .attachment-imagebed-manager-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 22px;
 }
 
+/* ═══ Progress bar (slim modern style) ═══ */
 .attachment-imagebed-manager-progress {
   width: 100%;
-  height: 14px;
-  margin: 8px 0 10px;
+  height: 6px;
+  margin: 12px 0 16px;
+  border-radius: 3px;
 }
 
+/* ═══ Delete list ═══ */
 .attachment-imagebed-manager-delete-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 10px 0;
+  gap: 8px;
+  margin: 14px 0;
   max-height: 28vh;
   overflow: auto;
 }
 
+/* ═══ Log output ═══ */
 .attachment-imagebed-manager-log {
   max-height: 42vh;
   overflow: auto;
   white-space: pre-wrap;
   color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .attachment-imagebed-manager-rule {
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-/* ── Category card (collapsible) ── */
+/* ═══ Category card (collapsible) ═══ */
 .attachment-imagebed-manager-category {
-  padding: 10px 12px;
-  margin: 6px 0;
+  padding: 16px 16px;
+  margin: 10px 0;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.attachment-imagebed-manager-category:hover {
+  border-color: var(--background-modifier-border-hover);
 }
 
 .attachment-imagebed-manager-category-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: default;
 }
 
 .attachment-imagebed-manager-category-header > input[type="checkbox"] {
   margin: 0;
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -138,7 +165,7 @@
 .attachment-imagebed-manager-auto-label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
@@ -154,10 +181,10 @@
   cursor: pointer;
   font-size: 11px;
   color: var(--text-muted);
-  padding: 2px 4px;
+  padding: 3px 6px;
   user-select: none;
   flex-shrink: 0;
-  transition: color 0.15s;
+  transition: color 0.15s ease;
 }
 
 .attachment-imagebed-manager-category-toggle:hover {
@@ -166,46 +193,48 @@
 
 .attachment-imagebed-manager-category-body {
   border-top: 1px solid var(--background-modifier-border);
-  margin-top: 8px;
-  padding-top: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
 }
 
-/* ── Extension chips ── */
+/* ═══ Extension chips ═══ */
 .attachment-imagebed-manager-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0 2px;
+  gap: 8px;
+  padding: 6px 0 4px;
 }
 
 .attachment-imagebed-manager-chip {
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 14px;
   font-size: 12px;
   cursor: pointer;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   color: var(--text-muted);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   user-select: none;
 }
 
 .attachment-imagebed-manager-chip:hover {
   border-color: var(--interactive-accent);
+  background: var(--background-secondary-alt);
 }
 
 .attachment-imagebed-manager-chip-active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
+  box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.25);
 }
 
-/* ── Custom extensions ── */
+/* ═══ Custom extensions ═══ */
 .attachment-imagebed-manager-custom-input-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 .attachment-imagebed-manager-custom-input-row input[type="text"] {
@@ -215,25 +244,30 @@
 .attachment-imagebed-manager-custom-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0;
+  gap: 8px;
+  padding: 6px 0;
 }
 
 .attachment-imagebed-manager-custom-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 5px;
+  padding: 4px 10px;
   border-radius: 14px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   font-size: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.attachment-imagebed-manager-custom-tag:hover {
+  border-color: var(--background-modifier-border-hover);
 }
 
 .attachment-imagebed-manager-custom-tag input[type="checkbox"] {
   margin: 0;
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
 }
 
 .attachment-imagebed-manager-auto-text {
@@ -244,29 +278,27 @@
 .attachment-imagebed-manager-remove {
   cursor: pointer;
   font-weight: 700;
-  opacity: 0.5;
+  opacity: 0.45;
   margin-left: 2px;
+  transition: opacity 0.15s ease;
 }
 
 .attachment-imagebed-manager-remove:hover {
   opacity: 1;
 }
 
-/* ── Setup status ── */
+/* ═══ Setup status indicator ═══ */
 .attachment-imagebed-manager-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin: 4px 0 12px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 12px 16px;
+  margin: 6px 0 18px;
+  border-radius: 10px;
   font-size: 14px;
 }
 
-.attachment-imagebed-manager-status-ok {
-  font-size: 16px;
-}
-
+.attachment-imagebed-manager-status-ok,
 .attachment-imagebed-manager-status-warn {
   font-size: 16px;
 }
@@ -280,70 +312,78 @@
   font-weight: 500;
 }
 
-/* ── Guide text ── */
+/* ═══ Guide / help text box ═══ */
 .attachment-imagebed-manager-guide {
-  margin: 0 0 12px;
-  padding: 8px 12px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
   background: var(--background-secondary);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-muted);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-/* ── Collapsible sections ── */
+/* ═══ Collapsible sections ═══ */
 .attachment-imagebed-manager-collapsed {
   display: none;
 }
 
-/* ── View toggle ── */
+/* ═══ View toggle (list/gallery switcher) ═══ */
 .attachment-imagebed-manager-view-toggle {
   display: flex;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
 .attachment-imagebed-manager-view-toggle button {
-  padding: 4px 12px;
-  border-radius: 6px;
+  padding: 5px 14px;
+  border-radius: 7px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
   color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .attachment-imagebed-manager-view-toggle button:hover {
   border-color: var(--interactive-accent);
+  background: var(--background-secondary-alt);
 }
 
 .attachment-imagebed-manager-view-toggle .attachment-imagebed-manager-view-btn-active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
+  box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.25);
 }
 
-/* ── Gallery view ── */
+/* ═══ Gallery view ═══ */
 .attachment-imagebed-manager-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  gap: 14px;
   max-height: 52vh;
   overflow: auto;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 
 .attachment-imagebed-manager-gallery-card {
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--background-secondary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.attachment-imagebed-manager-gallery-card:hover {
+  border-color: var(--background-modifier-border-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .attachment-imagebed-manager-gallery-preview {
   width: 100%;
-  height: 105px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -365,18 +405,18 @@
 }
 
 .attachment-imagebed-manager-gallery-info {
-  padding: 6px 8px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   flex-wrap: wrap;
   border-top: 1px solid var(--background-modifier-border);
 }
 
 .attachment-imagebed-manager-gallery-info input[type="checkbox"] {
   margin: 0;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
 }
 
@@ -396,10 +436,10 @@
   flex-shrink: 0;
 }
 
-/* ── Modal layout: sidebar + main ── */
+/* ═══ Modal layout: sidebar + main content ═══ */
 .attachment-imagebed-manager-modal-layout {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   min-height: 300px;
 }
 
@@ -408,20 +448,20 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 4px 0;
+  gap: 4px;
+  padding: 6px 0;
 }
 
 .attachment-imagebed-manager-sidebar-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
   color: var(--text-muted);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .attachment-imagebed-manager-sidebar-item:hover {
@@ -455,20 +495,20 @@
   flex-direction: column;
 }
 
-/* ── Bottom bar ── */
+/* ═══ Bottom bar (select all + actions) ═══ */
 .attachment-imagebed-manager-bottom-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid var(--background-modifier-border);
 }
 
 .attachment-imagebed-manager-select-all {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 13px;
   color: var(--text-muted);
   cursor: pointer;
@@ -476,7 +516,7 @@
 
 .attachment-imagebed-manager-select-all input[type="checkbox"] {
   margin: 0;
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
 }
