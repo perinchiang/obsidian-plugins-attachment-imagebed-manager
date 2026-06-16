@@ -83,7 +83,7 @@ export const I18N: Record<string, Record<string, string>> = {
     publicDomainDesc: "The URL prefix for accessing uploaded files, e.g. https://pub-xxx.r2.dev",
     objectPathTemplate: "Upload path template",
     pathTemplateDesc:
-      "Variables: {ext} = extension, {hash} = file hash, {hash2} = first 2 chars of hash, {filename} = original name. Default works for most cases.",
+      "Variables: {ext} = extension, {hash} = file hash, {hash2} = first 2 chars of hash, {hash-short} = short hash (32 chars), {filename} = original name. Default works for most cases.",
     testConnection: "Test connection",
     testConnectionDesc: "Click to verify your credentials are correct.",
     testing: "Testing...",
@@ -227,7 +227,7 @@ export const I18N: Record<string, Record<string, string>> = {
     publicDomainDesc: "上传文件的访问前缀，例如 https://pub-xxx.r2.dev",
     objectPathTemplate: "上传路径模板",
     pathTemplateDesc:
-      "可用变量：{ext} = 后缀，{hash} = 文件哈希，{hash2} = 哈希前2位，{filename} = 原始文件名。默认值适用于大多数情况。",
+      "可用变量：{ext} = 后缀，{hash} = 文件哈希，{hash2} = 哈希前2位，{hash-short} = 短哈希（32位），{filename} = 原始文件名。默认值适用于大多数情况。",
     testConnection: "测试连接",
     testConnectionDesc: "点击验证凭据是否正确。",
     testing: "测试中...",

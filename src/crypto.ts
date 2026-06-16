@@ -37,4 +37,10 @@ export async function getSignatureKey(
   return hmacSha256(kService, "aws4_request");
 }
 
+export async function sha256ShortHex(data: ArrayBuffer | Uint8Array, length: number = 32): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const fullHex = bufferToHex(hash);
+  return fullHex.slice(0, length);
+}
+
 export { hmacSha256Hex as hmacHex, sha256Hex as hashUtf8 };

@@ -12,12 +12,13 @@ export function safeFilename(name: string): string {
 
 export function renderPathTemplate(
   template: string,
-  values: { ext: string; hash: string; hash2: string; filename: string }
+  values: { ext: string; hash: string; hash2: string; hashShort: string; filename: string }
 ): string {
   return String(template || "attachments/{ext}/{hash2}/{hash}.{ext}")
     .replace(/\{ext\}/g, values.ext)
     .replace(/\{hash\}/g, values.hash)
     .replace(/\{hash2\}/g, values.hash2)
+    .replace(/\{hash-short\}/g, values.hashShort)
     .replace(/\{filename\}/g, values.filename)
     .replace(/^\/+/, "");
 }

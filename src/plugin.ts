@@ -14,7 +14,7 @@ import {
 import { DEFAULT_SETTINGS, getReplacementForExt, mergeSettings } from "./settings";
 import { extractLocalRefs } from "./link-parser";
 import { putS3Object, deleteS3Object } from "./s3-client";
-import { sha256Hex } from "./crypto";
+import { sha256Hex, sha256ShortHex } from "./crypto";
 import {
   basename,
   buildPublicUrl,
@@ -406,11 +406,13 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     const binary = await this.app.vault.readBinary(candidate.file);
     const body = new Uint8Array(binary);
     const hash = await sha256Hex(body);
+    const hashShort = await sha256ShortHex(body, 32); // 32位短哈希
     const ext = candidate.file.extension.toLowerCase();
     const key = renderPathTemplate(this.settings.s3.pathTemplate, {
       ext,
       hash,
       hash2: hash.slice(0, 2),
+      hashShort,
       filename: safeFilename(candidate.file.name),
     });
     const contentType = contentTypeForExt(ext);
