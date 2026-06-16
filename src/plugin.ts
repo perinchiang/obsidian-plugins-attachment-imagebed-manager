@@ -408,12 +408,22 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     const hash = await sha256Hex(body);
     const hashShort = await sha256ShortHex(body, 32); // 32位短哈希
     const ext = candidate.file.extension.toLowerCase();
+    
+    // 获取当前日期
+    const now = new Date();
+    const yyyy = now.getFullYear().toString();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    
     const key = renderPathTemplate(this.settings.s3.pathTemplate, {
       ext,
       hash,
       hash2: hash.slice(0, 2),
       hashShort,
       filename: safeFilename(candidate.file.name),
+      yyyy,
+      MM,
+      dd,
     });
     const contentType = contentTypeForExt(ext);
     await putS3Object(

@@ -304,6 +304,11 @@ async function getSignatureKey(secret, dateStamp, region, service) {
   const kService = await hmacSha256(kRegion, service);
   return hmacSha256(kService, "aws4_request");
 }
+async function sha256ShortHex(data, length = 32) {
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const fullHex = bufferToHex(hash);
+  return fullHex.slice(0, length);
+}
 
 // src/utils.ts
 function basename2(path) {
@@ -316,7 +321,7 @@ function safeFilename(name) {
   return String(name || "attachment").replace(/[\\/:*?"<>|#%]+/g, "-");
 }
 function renderPathTemplate(template, values) {
-  return String(template || "attachments/{ext}/{hash2}/{hash}.{ext}").replace(/\{ext\}/g, values.ext).replace(/\{hash\}/g, values.hash).replace(/\{hash2\}/g, values.hash2).replace(/\{filename\}/g, values.filename).replace(/^\/+/, "");
+  return String(template || "attachments/{ext}/{hash2}/{hash}.{ext}").replace(/\{ext\}/g, values.ext).replace(/\{hash\}/g, values.hash).replace(/\{hash2\}/g, values.hash2).replace(/\{hash-short\}/g, values.hashShort).replace(/\{filename\}/g, values.filename).replace(/\{yyyy\}/g, values.yyyy).replace(/\{MM\}/g, values.MM).replace(/\{dd\}/g, values.dd).replace(/^\/+/, "");
 }
 function buildPublicUrl(domain, key) {
   let cleanDomain = String(domain || "").replace(/\/+$/, "");
@@ -644,7 +649,7 @@ var I18N = {
     publicDomain: "Public access URL",
     publicDomainDesc: "The URL prefix for accessing uploaded files, e.g. https://pub-xxx.r2.dev",
     objectPathTemplate: "Upload path template",
-    pathTemplateDesc: "Variables: {ext} = extension, {hash} = file hash, {hash2} = first 2 chars of hash, {filename} = original name. Default works for most cases.",
+    pathTemplateDesc: "Variables: {ext} = extension, {hash} = file hash, {hash2} = first 2 chars of hash, {hash-short} = short hash (32 chars), {filename} = original name, {yyyy} = year, {MM} = month, {dd} = day. Default works for most cases.",
     testConnection: "Test connection",
     testConnectionDesc: "Click to verify your credentials are correct.",
     testing: "Testing...",
@@ -777,7 +782,7 @@ var I18N = {
     publicDomain: "\u516C\u5F00\u8BBF\u95EE URL",
     publicDomainDesc: "\u4E0A\u4F20\u6587\u4EF6\u7684\u8BBF\u95EE\u524D\u7F00\uFF0C\u4F8B\u5982 https://pub-xxx.r2.dev",
     objectPathTemplate: "\u4E0A\u4F20\u8DEF\u5F84\u6A21\u677F",
-    pathTemplateDesc: "\u53EF\u7528\u53D8\u91CF\uFF1A{ext} = \u540E\u7F00\uFF0C{hash} = \u6587\u4EF6\u54C8\u5E0C\uFF0C{hash2} = \u54C8\u5E0C\u524D2\u4F4D\uFF0C{filename} = \u539F\u59CB\u6587\u4EF6\u540D\u3002\u9ED8\u8BA4\u503C\u9002\u7528\u4E8E\u5927\u591A\u6570\u60C5\u51B5\u3002",
+    pathTemplateDesc: "\u53EF\u7528\u53D8\u91CF\uFF1A{ext} = \u540E\u7F00\uFF0C{hash} = \u6587\u4EF6\u54C8\u5E0C\uFF0C{hash2} = \u54C8\u5E0C\u524D2\u4F4D\uFF0C{hash-short} = \u77ED\u54C8\u5E0C\uFF0832\u4F4D\uFF09\uFF0C{filename} = \u539F\u59CB\u6587\u4EF6\u540D\uFF0C{yyyy} = \u5E74\uFF0C{MM} = \u6708\uFF0C{dd} = \u65E5\u3002\u9ED8\u8BA4\u503C\u9002\u7528\u4E8E\u5927\u591A\u6570\u60C5\u51B5\u3002",
     testConnection: "\u6D4B\u8BD5\u8FDE\u63A5",
     testConnectionDesc: "\u70B9\u51FB\u9A8C\u8BC1\u51ED\u636E\u662F\u5426\u6B63\u786E\u3002",
     testing: "\u6D4B\u8BD5\u4E2D...",
@@ -1987,12 +1992,21 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
     const binary = await this.app.vault.readBinary(candidate.file);
     const body = new Uint8Array(binary);
     const hash = await sha256Hex(body);
+    const hashShort = await sha256ShortHex(body, 32);
     const ext = candidate.file.extension.toLowerCase();
+    const now = /* @__PURE__ */ new Date();
+    const yyyy = now.getFullYear().toString();
+    const MM = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
     const key = renderPathTemplate(this.settings.s3.pathTemplate, {
       ext,
       hash,
       hash2: hash.slice(0, 2),
-      filename: safeFilename(candidate.file.name)
+      hashShort,
+      filename: safeFilename(candidate.file.name),
+      yyyy,
+      MM,
+      dd
     });
     const contentType = contentTypeForExt(ext);
     await putS3Object(
