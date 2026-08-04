@@ -1,6 +1,6 @@
-import { App, Modal, Notice, Setting, TFile, createDiv } from "obsidian";
+import { App, Modal, Notice, Setting, TFile } from "obsidian";
 import type AttachmentImagebedManagerPlugin from "./plugin";
-import { Candidate, ProgressState, LocalFileRecord } from "./types";
+import { Candidate, LocalFileRecord, ProgressState, ReplaceResult } from "./types";
 import { formatBytes, isPreviewableImage } from "./utils";
 import { FILE_CATEGORIES, getCategoryForExt } from "./file-categories";
 
@@ -23,7 +23,7 @@ export class CandidateModal extends Modal {
   noteFile: TFile;
   candidates: Candidate[];
   selected: Set<string>;
-  viewMode: ViewMode = "list";
+  viewMode: ViewMode;
   activeFilter: string = "all";
   progressBar: HTMLProgressElement | null = null;
   progressText: HTMLElement | null = null;
@@ -34,6 +34,7 @@ export class CandidateModal extends Modal {
     this.noteFile = noteFile;
     this.candidates = candidates;
     this.selected = new Set(candidates.map((c) => c.file.path));
+    this.viewMode = plugin.isMobile ? "gallery" : "list";
   }
 
   onOpen(): void {
@@ -245,7 +246,8 @@ export class CandidateModal extends Modal {
   }
 
   createPreview(candidate: Candidate): HTMLElement {
-    const preview = createDiv({ cls: "attachment-imagebed-manager-preview" });
+    const preview = document.createElement("div");
+    preview.addClass("attachment-imagebed-manager-preview");
     if (isPreviewableImage(candidate.file.extension)) {
       const image = preview.createEl("img");
       image.src = this.app.vault.getResourcePath(candidate.file);
@@ -268,17 +270,37 @@ export class CandidateModal extends Modal {
       return;
     }
     this.renderProgress(chosen.length);
+    let result: ReplaceResult;
     try {
-      const result = await this.plugin.replaceCandidates(this.noteFile, chosen, (state) => {
+      result = await this.plugin.replaceCandidates(this.noteFile, chosen, (state) => {
         this.updateProgress(state);
       });
-      new Notice(t("replacedNotice", { count: result.replaced }));
-      this.renderDeleteConfirmation(result.localFiles || []);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("Attachment replacement failed", error);
       new Notice(t("replaceFailed", { error: message }), 10000);
       this.renderError(error instanceof Error ? error : new Error(message));
+      return;
+    }
+
+    new Notice(t("replacedNotice", { count: result.replaced }));
+    if (result.deleteMode === "immediate") {
+      this.close();
+      return;
+    }
+    if (result.deleteMode === "delayed") {
+      new Notice(t("delayedDeleteScheduled"));
+      this.close();
+      return;
+    }
+    try {
+      this.renderDeleteConfirmation(result.localFiles || []);
+    } catch (error: unknown) {
+      // The note replacement has already completed. A rendering failure must
+      // not be reported as an upload or replacement failure.
+      console.error("Attachment replacement result UI failed", error);
+      new Notice(t("resultUiFailed"), 10000);
+      this.close();
     }
   }
 
@@ -343,11 +365,10 @@ export class CandidateModal extends Modal {
       .addButton((button) =>
         button.setButtonText(t("keepLocal")).onClick(() => this.close())
       )
-      .addButton((button) =>
-        button
-          .setButtonText(t("deleteLocal"))
-          .setDestructive()
-          .onClick(async () => {
+      .addButton((button) => {
+        button.setButtonText(t("deleteLocal"));
+        button.buttonEl.addClass("mod-warning");
+        button.onClick(async () => {
             try {
               await this.plugin.deleteLocalFileRecords(this.noteFile, localFiles, "manual-delete");
               new Notice(t("movedToTrash", { count: localFiles.length }));
@@ -358,8 +379,8 @@ export class CandidateModal extends Modal {
               new Notice(t("localDeleteFailed", { error: message }), 10000);
               this.renderError(error instanceof Error ? error : new Error(message));
             }
-          })
-      );
+          });
+      });
   }
 
   renderError(error: Error): void {

@@ -73,7 +73,7 @@ Click **Test connection** to verify your settings.
   - *Ask me each time* (recommended) — shows a confirmation dialog
   - *Delete immediately* — trashes local files right away
   - *Delete after a delay* — schedules deletion after configurable hours (desktop only)
-- **Auto-scan vault periodically**: Automatically find and replace eligible attachments (desktop only)
+- **Auto-scan vault periodically**: On desktop, find and replace eligible attachments while Obsidian is open (desktop only)
   - **Scan interval**: How often to scan (default: 30 minutes)
   - **Skip recently modified files**: Files modified within this time are skipped (default: 600 seconds)
   - **Minimum file size**: Ignore files smaller than this threshold in auto-scan
@@ -94,13 +94,19 @@ This section appears only when auto-scan is enabled. It lets you configure which
 Click the cloud upload icon in the sidebar, or use the command palette:
 - **Scan current note attachments** — shows eligible attachments in a modal with category filters, list/gallery views, and a select-all checkbox
 
-### Vault-wide Preview (Desktop)
+### Vault-wide Preview (Desktop and Mobile)
 
-Command palette → **Scan vault candidates without replacing** — preview mode, no changes made.
+Command palette → **Preview all local vault attachments** — preview mode, no changes made.
+
+### Foreground Vault Batch (Desktop and Mobile)
+
+Command palette → **Directly upload & replace all vault attachments (no filtering)**. The plugin scans Markdown notes, shows a summary, then processes every discovered local attachment one by one. Mobile batch processing must stay in the foreground; switching apps or locking the screen may pause the task.
+
+For a safer selective run, use **Filter & batch replace vault attachments**. It scans first, then lets you filter by file type and select individual attachments before starting the same foreground batch processor.
 
 ### Auto Scan (Desktop Only)
 
-Enable in settings → **Auto-scan vault periodically**. The plugin will automatically upload and replace eligible attachments in the background.
+Enable in settings → **Auto-scan vault periodically**. While the desktop Obsidian app is open, the plugin checks the vault at the configured interval (default: 30 minutes). It does not run immediately at startup, skips recently modified notes/files and files below the configured thresholds, and continues with other notes when one note fails. Auto-scan uses delayed local-file deletion so it does not stop to ask questions.
 
 ### Process Delayed Deletes (Desktop)
 
@@ -110,6 +116,8 @@ Command palette → **Process delayed attachment deletes** — manually trigger 
 
 On mobile devices:
 - Manual upload and replacement works normally
+- Foreground vault batch replacement is available, but Obsidian must remain open while it runs
+- Background auto-scan is not supported; switching apps or locking the screen may pause a batch
 - Scheduled auto-scan is disabled (to preserve battery and avoid background restrictions)
 - Delayed delete policy is not available (use "Ask me each time" or "Delete immediately")
 - File type configuration (Step 3) is hidden since it only applies to auto-scan
@@ -186,7 +194,7 @@ MIT
   - *每次询问我*（推荐）— 弹出确认对话框
   - *替换后立即删除* — 直接移入回收站
   - *延迟删除* — 在指定小时后移入回收站（仅桌面端）
-- **定期自动扫描全库**: 自动在后台查找并替换符合条件的附件（仅桌面端）
+- **定期自动扫描全库**: 仅桌面端在 Obsidian 运行期间查找并替换符合条件的附件
   - **扫描间隔**: 多久扫描一次（默认：30 分钟）
   - **跳过最近修改的文件**: 在此时间内修改过的文件会被跳过（默认：600 秒）
   - **最小文件大小**: 自动扫描忽略小于此大小的文件
@@ -207,13 +215,19 @@ MIT
 点击侧边栏云上传图标，或使用命令面板：
 - **扫描当前文档附件** — 在弹窗中按分类浏览、列表/画廊切换、全选附件
 
-#### 全库预览（桌面端）
+#### 全库预览（全平台）
 
-命令面板 → **扫描全库候选但不替换** — 预览模式，不做任何修改。
+命令面板 → **预览全库本地附件** — 预览模式，不做任何修改。
+
+#### 前台批量替换（桌面端和移动端）
+
+命令面板 → **直接批量替换全库附件（不筛选）**。插件会扫描所有 Markdown 笔记，先显示统计摘要，再逐篇处理发现的全部本地附件。移动端批处理必须保持 Obsidian 在前台；切换应用或锁屏可能暂停任务。
+
+如果只想处理一部分附件，使用 **筛选后批量替换全库附件**。插件会先扫描，再按图片、视频、音频、文档或其他分类筛选，并允许逐项勾选后开始批处理。
 
 #### 自动扫描（仅桌面端）
 
-在设置中开启 **定期自动扫描全库**，插件会自动在后台上传替换符合条件的附件。
+在设置中开启 **定期自动扫描全库**。只要桌面版 Obsidian 保持运行，插件就会按设置的间隔（默认 30 分钟）检查全库；启动后不会立即扫描，会跳过最近修改的笔记/附件以及低于阈值的文件。某篇笔记失败时会继续处理其他笔记。自动扫描使用延迟删除，不会弹出询问框。
 
 #### 处理延迟删除（桌面端）
 
@@ -223,6 +237,8 @@ MIT
 
 在移动设备上：
 - 手动上传和替换功能正常使用
+- 支持前台批量替换，但处理期间必须保持 Obsidian 打开
+- 不支持后台自动扫描；切换应用或锁屏可能暂停批处理
 - 定时自动扫描已禁用（节省电量，避免后台限制）
 - 延迟删除策略不可用（请使用"每次询问"或"立即删除"）
 - 文件类型配置（第三步）已隐藏，因为仅对自动扫描生效
