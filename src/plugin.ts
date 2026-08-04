@@ -7,9 +7,14 @@ import {
   LogEntry,
   PluginSettings,
   ProgressState,
+  ReplaceOptions,
   ReplaceResult,
   ScanOptions,
   UploadResult,
+  VaultBatchFailure,
+  VaultBatchPlan,
+  VaultBatchProgress,
+  VaultBatchResult,
 } from "./types";
 import { DEFAULT_SETTINGS, getReplacementForExt, mergeSettings } from "./settings";
 import { extractLocalRefs } from "./link-parser";
@@ -27,13 +32,22 @@ import {
 } from "./utils";
 import { detectLocaleFromApp, t as translate } from "./i18n";
 import { CandidateModal } from "./candidate-modal";
+import { VaultBatchModal } from "./vault-batch-modal";
+import { VaultBatchFilterModal } from "./vault-batch-filter-modal";
 import { DryRunModal } from "./dry-run-modal";
 import { AttachmentImagebedSettingTab } from "./settings-tab";
+import {
+  isFileQuiet,
+  meetsAutoScanSize,
+  normalizeScanIntervalMinutes,
+  shouldScheduleAutoScan,
+} from "./auto-scan-policy";
 
 export default class AttachmentImagebedManagerPlugin extends Plugin {
   declare settings: PluginSettings;
   locale!: string;
   autoScanTimer: number | null = null;
+  autoScanRunning = false;
   isMobile: boolean = false;
 
   async onload(): Promise<void> {
@@ -58,10 +72,24 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "process-delayed-deletes",
-      name: this.t("commandProcessDeletes"),
-      callback: () => this.processPendingDeletes(),
+      id: "batch-replace-vault-attachments",
+      name: this.t("commandBatchReplaceVault"),
+      callback: () => this.openVaultBatch(),
     });
+
+    this.addCommand({
+      id: "filter-batch-replace-vault-attachments",
+      name: this.t("commandFilterBatchReplaceVault"),
+      callback: () => this.openFilteredVaultBatch(),
+    });
+
+    if (!this.isMobile) {
+      this.addCommand({
+        id: "process-delayed-deletes",
+        name: this.t("commandProcessDeletes"),
+        callback: () => this.processPendingDeletes(),
+      });
+    }
 
     this.addSettingTab(new AttachmentImagebedSettingTab(this.app, this));
     if (!this.isMobile) {
@@ -99,9 +127,12 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
   configureAutoScan(): void {
     if (this.autoScanTimer) window.clearInterval(this.autoScanTimer);
     this.autoScanTimer = null;
-    if (this.isMobile) return;
-    if (!this.settings.enabled || !this.settings.autoScanEnabled) return;
-    const minutes = Math.max(1, Number(this.settings.scanIntervalMinutes) || 30);
+    if (!shouldScheduleAutoScan({
+      isMobile: this.isMobile,
+      enabled: this.settings.enabled,
+      autoScanEnabled: this.settings.autoScanEnabled,
+    })) return;
+    const minutes = normalizeScanIntervalMinutes(this.settings.scanIntervalMinutes);
     this.autoScanTimer = window.setInterval(() => {
       this.runAutoScan().catch((error) => {
         console.error("Auto scan failed", error);
@@ -131,6 +162,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
       enforceAttachmentRoot: false,
       enforceSizeRule: false,
       skipExtensionFilter: true,
+      includeCoverReferences: true,
     });
     if (candidates.length === 0) {
       new Notice(this.t("noCandidates"));
@@ -141,71 +173,302 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
 
   async scanVaultDryRun(): Promise<void> {
     const files = this.app.vault.getMarkdownFiles();
-    let count = 0;
-    const samples: string[] = [];
     const notice = new Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    const plan = await this.scanVaultPlan((state) => {
+      notice.setMessage(this.t("scanningVault", { current: state.current, total: state.total }));
+    });
+    notice.hide();
+    new DryRunModal(this.app, this, plan).open();
+  }
+
+  async openVaultBatch(): Promise<void> {
+    if (!this.settings.enabled) {
+      new Notice(this.t("disabled"));
+      return;
+    }
+    const files = this.app.vault.getMarkdownFiles();
+    const notice = new Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    try {
+      const plan = await this.scanVaultPlan((state) => {
+        notice.setMessage(this.t("scanningVault", { current: state.current, total: state.total }));
+      });
+      notice.hide();
+      if (!plan.items.length) {
+        new Notice(this.t("noVaultCandidates"));
+        return;
+      }
+      new VaultBatchModal(this.app, this, plan).open();
+    } catch (error: unknown) {
+      notice.hide();
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Vault scan failed", error);
+      new Notice(this.t("vaultScanFailed", { error: message }), 10000);
+    }
+  }
+
+  async openFilteredVaultBatch(): Promise<void> {
+    if (!this.settings.enabled) {
+      new Notice(this.t("disabled"));
+      return;
+    }
+    const files = this.app.vault.getMarkdownFiles();
+    const notice = new Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    try {
+      const plan = await this.scanVaultPlan((state) => {
+        notice.setMessage(this.t("scanningVault", { current: state.current, total: state.total }));
+      });
+      notice.hide();
+      if (!plan.items.length) {
+        new Notice(this.t("noVaultCandidates"));
+        return;
+      }
+      new VaultBatchFilterModal(this.app, this, plan).open();
+    } catch (error: unknown) {
+      notice.hide();
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Filtered vault scan failed", error);
+      new Notice(this.t("vaultScanFailed", { error: message }), 10000);
+    }
+  }
+
+  async scanVaultPlan(
+    onProgress?: (state: VaultBatchProgress) => void
+  ): Promise<VaultBatchPlan> {
+    const files = this.app.vault.getMarkdownFiles();
+    const items: VaultBatchPlan["items"] = [];
+    const uniqueFiles = new Map<string, TFile>();
+    const referencesBySource = new Map<string, Set<string>>();
+    const scanFailures: VaultBatchFailure[] = [];
+    let totalReferences = 0;
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (i % 50 === 0) {
-        notice.setMessage(this.t("scanningVault", { current: i, total: files.length }));
-      }
+      onProgress?.({
+        phase: "scanning",
+        current: i + 1,
+        total: files.length,
+        notePath: file.path,
+        label: file.name,
+      });
       try {
         const candidates = await this.findCandidatesInNote(file, {
-          requireAutoCandidate: true,
-          enforceAttachmentRoot: true,
-          enforceSizeRule: true,
+          requireAutoCandidate: false,
+          enforceAttachmentRoot: false,
+          enforceSizeRule: false,
+          skipExtensionFilter: true,
+          includeCoverReferences: true,
         });
-        count += candidates.length;
-        for (const candidate of candidates.slice(0, 3)) {
-          if (samples.length < 20) samples.push(`${file.path} -> ${candidate.file.path}`);
+        if (!candidates.length) continue;
+        items.push({ noteFile: file, candidates });
+        for (const candidate of candidates) {
+          uniqueFiles.set(candidate.file.path, candidate.file);
+          const notePaths = referencesBySource.get(candidate.file.path) || new Set<string>();
+          notePaths.add(file.path);
+          referencesBySource.set(candidate.file.path, notePaths);
+          totalReferences += candidate.refs.length;
         }
-      } catch (error) {
-        console.error(`Dry-run scan error for ${file.path}:`, error);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        scanFailures.push({ notePath: file.path, error: message });
+        console.error(`Vault scan error for ${file.path}:`, error);
       }
     }
-    notice.hide();
-    new DryRunModal(this.app, this, count, samples).open();
+
+    return {
+      items,
+      noteCount: items.length,
+      uniqueFileCount: uniqueFiles.size,
+      totalBytes: Array.from(uniqueFiles.values()).reduce((sum, file) => sum + file.stat.size, 0),
+      totalReferences,
+      scanFailures,
+      referencesBySource: Object.fromEntries(
+        Array.from(referencesBySource.entries()).map(([path, notePaths]) => [path, Array.from(notePaths)])
+      ),
+    };
+  }
+
+  async runVaultBatch(
+    plan: VaultBatchPlan,
+    onProgress?: (state: VaultBatchProgress) => void
+  ): Promise<VaultBatchResult> {
+    this.ensureS3Settings();
+    const deleteMode = this.getEffectiveDeleteMode();
+    const uploadCache = new Map<string, UploadResult>();
+    const successfulNotes = new Set<string>();
+    const localRecords = new Map<string, LocalFileRecord>();
+    const failures: VaultBatchFailure[] = plan.scanFailures ? [...plan.scanFailures] : [];
+    let replacedLinks = 0;
+    let notesChanged = 0;
+
+    for (let i = 0; i < plan.items.length; i++) {
+      const item = plan.items[i];
+      onProgress?.({
+        phase: "rewriting",
+        current: i,
+        total: plan.items.length,
+        notePath: item.noteFile.path,
+        label: item.noteFile.name,
+      });
+      try {
+        const result = await this.replaceCandidates(item.noteFile, item.candidates, (state) => {
+          onProgress?.({
+            phase: state.phase === "trashing" ? "trashing" : state.phase === "scheduling" ? "scheduling" : state.phase === "uploading" || state.phase === "uploaded" ? "uploading" : "rewriting",
+            current: i,
+            total: plan.items.length,
+            notePath: item.noteFile.path,
+            label: state.label,
+          });
+        }, {
+          deleteMode,
+          deferDeletion: true,
+          uploadCache,
+        });
+        if (result.replaced > 0) {
+          successfulNotes.add(item.noteFile.path);
+          notesChanged += 1;
+          replacedLinks += result.replaced;
+          for (const record of result.localFiles || []) localRecords.set(record.path, record);
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push({ notePath: item.noteFile.path, error: message });
+        console.error(`Vault batch error for ${item.noteFile.path}:`, error);
+      }
+    }
+
+    const referencesBySource = new Map<string, Set<string>>();
+    if (plan.referencesBySource) {
+      for (const [sourcePath, notePaths] of Object.entries(plan.referencesBySource)) {
+        referencesBySource.set(sourcePath, new Set(notePaths));
+      }
+    } else {
+      for (const item of plan.items) {
+        for (const candidate of item.candidates) {
+          const refs = referencesBySource.get(candidate.file.path) || new Set<string>();
+          refs.add(item.noteFile.path);
+          referencesBySource.set(candidate.file.path, refs);
+        }
+      }
+    }
+    const deletable = Array.from(localRecords.values()).filter((record) => {
+      const refs = referencesBySource.get(record.path);
+      return !!refs && Array.from(refs).every((notePath) => successfulNotes.has(notePath));
+    });
+    const protectedFiles = localRecords.size - deletable.length;
+    let deletedFiles = 0;
+    let scheduledFiles = 0;
+
+    if (deleteMode === "immediate") {
+      onProgress?.({
+        phase: "trashing",
+        current: 0,
+        total: deletable.length,
+        notePath: "",
+        label: this.t("phaseTrashing"),
+      });
+      for (let i = 0; i < deletable.length; i++) {
+        const record = deletable[i];
+        const notePath = this.firstReferencingNote(record.path, plan) || "vault-batch";
+        const file = this.app.vault.getAbstractFileByPath(record.path);
+        if (!(file instanceof TFile)) continue;
+        try {
+          await this.deleteLocalFileRecords({ path: notePath }, [record], "manual-delete");
+          deletedFiles += 1;
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push({ notePath, error: `${record.path}: ${message}` });
+          console.error(`Vault batch delete error for ${record.path}:`, error);
+        }
+        onProgress?.({ phase: "trashing", current: i + 1, total: deletable.length, notePath, label: record.name });
+      }
+    } else if (deleteMode === "delayed") {
+      for (let i = 0; i < deletable.length; i++) {
+        const record = deletable[i];
+        const notePath = this.firstReferencingNote(record.path, plan) || "vault-batch";
+        const noteFile = this.app.vault.getAbstractFileByPath(notePath);
+        this.scheduleDelayedDeletes(noteFile instanceof TFile ? noteFile : { path: notePath }, [record]);
+        scheduledFiles += 1;
+        onProgress?.({ phase: "scheduling", current: i + 1, total: deletable.length, notePath, label: record.name });
+      }
+      await this.saveSettings();
+    }
+
+    onProgress?.({
+      phase: "done",
+      current: plan.items.length,
+      total: plan.items.length,
+      notePath: "",
+      label: this.t("phaseDone"),
+    });
+    return {
+      notesScanned: plan.items.length + (plan.scanFailures?.length || 0),
+      notesChanged,
+      uniqueFiles: plan.uniqueFileCount,
+      uploadedFiles: uploadCache.size,
+      replacedLinks,
+      deletedFiles,
+      scheduledFiles,
+      protectedFiles,
+      pendingLocalFiles: deleteMode === "confirm" ? deletable : [],
+      failures,
+    };
+  }
+
+  firstReferencingNote(sourcePath: string, plan: VaultBatchPlan): string | null {
+    for (const item of plan.items) {
+      if (item.candidates.some((candidate) => candidate.file.path === sourcePath)) return item.noteFile.path;
+    }
+    return null;
   }
 
   async runAutoScan(): Promise<void> {
-    if (!this.settings.enabled || !this.settings.autoScanEnabled) return;
+    if (!shouldScheduleAutoScan({
+      isMobile: this.isMobile,
+      enabled: this.settings.enabled,
+      autoScanEnabled: this.settings.autoScanEnabled,
+      running: this.autoScanRunning,
+    })) return;
+    this.autoScanRunning = true;
     try {
       this.ensureS3Settings();
     } catch {
-      // S3 not configured, skip auto scan silently
+      // S3 not configured, skip this run silently.
+      this.autoScanRunning = false;
+      return;
     }
-    const minBytes = Math.max(0, Number(this.settings.autoScanMinSizeMiB) || 0) * 1024 * 1024;
-    const files = this.app.vault.getMarkdownFiles();
-    let replaced = 0;
-    for (const file of files) {
-      try {
-        if (!this.isQuiet(file)) continue;
-        const candidates = await this.findCandidatesInNote(file, {
-          requireAutoCandidate: true,
-          enforceAttachmentRoot: true,
-          enforceSizeRule: true,
-        });
-        const quietCandidates = candidates.filter((c) => {
-          if (!this.isQuiet(c.file)) return false;
-          if (minBytes > 0 && c.sizeBytes < minBytes) return false;
-          return true;
-        });
-        if (quietCandidates.length === 0) continue;
-        const result = await this.replaceCandidates(file, quietCandidates, null, {
-          deleteMode: "delayed",
-        });
-        replaced += result.replaced;
-      } catch (error) {
-        console.error(`Auto-scan error for ${file.path}:`, error);
+    try {
+      const files = this.app.vault.getMarkdownFiles();
+      let replaced = 0;
+      for (const file of files) {
+        try {
+          if (!this.isQuiet(file)) continue;
+          const candidates = await this.findCandidatesInNote(file, {
+            requireAutoCandidate: true,
+            enforceAttachmentRoot: true,
+            enforceSizeRule: true,
+          });
+          const quietCandidates = candidates.filter((c) => {
+            if (!this.isQuiet(c.file)) return false;
+            if (!meetsAutoScanSize(c.sizeBytes, this.settings.autoScanMinSizeMiB)) return false;
+            return true;
+          });
+          if (quietCandidates.length === 0) continue;
+          const result = await this.replaceCandidates(file, quietCandidates, null, {
+            deleteMode: "delayed",
+          });
+          replaced += result.replaced;
+        } catch (error) {
+          console.error(`Auto-scan error for ${file.path}:`, error);
+        }
       }
+      if (replaced > 0) new Notice(this.t("autoScanReplaced", { count: replaced }));
+    } finally {
+      this.autoScanRunning = false;
     }
-    if (replaced > 0) new Notice(this.t("autoScanReplaced", { count: replaced }));
   }
 
   isQuiet(file: TFile): boolean {
-    const quietMs = Math.max(0, Number(this.settings.quietSeconds) || 0) * 1000;
-    if (!quietMs) return true;
-    return Date.now() - file.stat.mtime >= quietMs;
+    return isFileQuiet(file.stat.mtime, this.settings.quietSeconds);
   }
 
   async findCandidatesInNote(noteFile: TFile, options: ScanOptions): Promise<Candidate[]> {
@@ -218,7 +481,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
       if (!targetFile || !(targetFile instanceof TFile)) continue;
       if (options.enforceAttachmentRoot !== false && !this.isUnderAttachmentRoot(targetFile))
         continue;
-      if (this.isCoverReference(text, ref)) continue;
+      if (!options.includeCoverReferences && this.isCoverReference(text, ref)) continue;
 
       const ext = targetFile.extension.toLowerCase();
       if (ext === "md") continue;
@@ -292,9 +555,10 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     noteFile: TFile,
     candidates: Candidate[],
     progress: ((state: ProgressState) => void) | null,
-    options: { deleteMode?: DeletePolicy } = {}
+    options: ReplaceOptions = {}
   ): Promise<ReplaceResult> {
-    const deleteMode = options.deleteMode || this.settings.deletePolicy || "confirm";
+    const deleteMode = this.getEffectiveDeleteMode(options.deleteMode);
+    const deferDeletion = options.deferDeletion === true;
     this.ensureS3Settings();
     const originalText = await this.app.vault.read(noteFile);
     let noteChanged = false;
@@ -302,12 +566,13 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     const replacementMap = new Map<string, string>();
     const uploaded = new Map<string, UploadResult>();
     const uploadedKeys: string[] = [];
+    const newlyCachedPaths: string[] = [];
     const uniqueFiles = new Set(candidates.map((c) => c.file.path)).size;
     let completedUploads = 0;
 
     try {
       for (const candidate of candidates) {
-        let upload = uploaded.get(candidate.file.path);
+        let upload = uploaded.get(candidate.file.path) || options.uploadCache?.get(candidate.file.path);
         if (!upload) {
           progress?.({
             phase: "uploading",
@@ -318,6 +583,10 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
           upload = await this.uploadCandidate(candidate);
           uploaded.set(candidate.file.path, upload);
           uploadedKeys.push(upload.key);
+          if (options.uploadCache) {
+            options.uploadCache.set(candidate.file.path, upload);
+            newlyCachedPaths.push(candidate.file.path);
+          }
           completedUploads += 1;
           progress?.({
             phase: "uploaded",
@@ -326,6 +595,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
             label: candidate.file.name,
           });
         }
+        uploaded.set(candidate.file.path, upload);
         for (const ref of candidate.refs) {
           replacementMap.set(ref.raw, this.buildReplacement(ref, candidate, upload.publicUrl));
         }
@@ -356,15 +626,33 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
       for (const key of uploadedKeys) {
         await deleteS3Object(this.settings.s3, key).catch(() => {});
       }
+      for (const path of newlyCachedPaths) {
+        const cache = options.uploadCache;
+        if (cache && cache.get(path)?.key === uploaded.get(path)?.key) cache.delete(path);
+      }
       throw error;
     }
 
-    if (!noteChanged) return { replaced: 0 };
+    if (!noteChanged) {
+      return { replaced: 0, deleteMode, deletionStatus: "kept" };
+    }
 
     const localFiles = this.buildLocalFileRecords(candidates, uploaded);
     for (const candidate of candidates) replaced += candidate.refs.length;
 
-    if (deleteMode === "delayed") {
+    let deletionStatus: ReplaceResult["deletionStatus"] = "kept";
+    if (deferDeletion) {
+      deletionStatus = "deferred";
+      for (const fileRecord of localFiles) {
+        this.addLog({
+          status: "replaced-awaiting-batch-delete",
+          notePath: noteFile.path,
+          sourcePath: fileRecord.path,
+          remoteUrl: fileRecord.remoteUrl,
+          trashed: false,
+        });
+      }
+    } else if (deleteMode === "delayed") {
       progress?.({
         phase: "scheduling",
         current: completedUploads,
@@ -372,6 +660,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
         label: this.t("phaseScheduling"),
       });
       this.scheduleDelayedDeletes(noteFile, localFiles);
+      deletionStatus = "scheduled";
     } else if (deleteMode === "immediate") {
       progress?.({
         phase: "trashing",
@@ -380,6 +669,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
         label: this.t("phaseTrashing"),
       });
       await this.deleteLocalFileRecords(noteFile, localFiles, "manual-delete");
+      deletionStatus = "trashed";
     } else {
       for (const fileRecord of localFiles) {
         this.addLog({
@@ -399,7 +689,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
       total: uniqueFiles,
       label: this.t("phaseDone"),
     });
-    return { replaced, localFiles };
+    return { replaced, localFiles, deleteMode, deletionStatus };
   }
 
   async uploadCandidate(candidate: Candidate): Promise<UploadResult> {
@@ -423,6 +713,11 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
       hash
     );
     return { key, publicUrl: buildPublicUrl(this.settings.s3.customDomainName, key) };
+  }
+
+  getEffectiveDeleteMode(requested?: DeletePolicy): DeletePolicy {
+    const mode = requested || this.settings.deletePolicy || "confirm";
+    return this.isMobile && mode === "delayed" ? "confirm" : mode;
   }
 
   buildReplacement(ref: LocalRef, candidate: Candidate, publicUrl: string): string {
@@ -457,7 +752,7 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     return Array.from(byPath.values());
   }
 
-  scheduleDelayedDeletes(noteFile: TFile, localFiles: LocalFileRecord[]): void {
+  scheduleDelayedDeletes(noteFile: { path: string }, localFiles: LocalFileRecord[]): void {
     const delayMs =
       Math.max(0, Number(this.settings.autoDeleteDelayHours) || 0) * 60 * 60 * 1000;
     const dueAt = Date.now() + delayMs;
@@ -526,8 +821,22 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
     if (due.length === 0) return;
     const remaining = pending.filter((entry) => Number(entry.dueAt) > now);
     this.settings.pendingDeletes = remaining;
+    const retryDelayMs = Math.max(1, Number(this.settings.autoDeleteDelayHours) || 24) * 60 * 60 * 1000;
     for (const entry of due) {
       try {
+        if (await this.isLocalFileReferenced(entry.sourcePath)) {
+          const retryAt = Date.now() + retryDelayMs;
+          remaining.push({ ...entry, dueAt: retryAt });
+          this.addLog({
+            status: "delayed-delete-protected-still-referenced",
+            notePath: entry.notePath,
+            sourcePath: entry.sourcePath,
+            remoteUrl: entry.remoteUrl,
+            trashed: false,
+            dueAt: new Date(retryAt).toISOString(),
+          });
+          continue;
+        }
         const noteFile = this.app.vault.getAbstractFileByPath(entry.notePath);
         await this.deleteLocalFileRecords(
           noteFile instanceof TFile ? noteFile : { path: entry.notePath },
@@ -535,10 +844,30 @@ export default class AttachmentImagebedManagerPlugin extends Plugin {
           "delayed-delete"
         );
       } catch (error) {
+        remaining.push(entry);
         console.error(`Delayed delete failed for ${entry.sourcePath}:`, error);
       }
     }
+    this.settings.pendingDeletes = remaining;
     await this.saveSettings();
+  }
+
+  async isLocalFileReferenced(sourcePath: string): Promise<boolean> {
+    const source = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (!source || typeof source.path !== "string") return false;
+    for (const noteFile of this.app.vault.getMarkdownFiles()) {
+      try {
+        const text = await this.app.vault.read(noteFile);
+        for (const ref of extractLocalRefs(text)) {
+          const target = this.resolveLinkedFile(ref.target, noteFile);
+          if (target?.path === sourcePath) return true;
+        }
+      } catch (error) {
+        console.error(`Unable to verify references before deleting ${sourcePath} in ${noteFile.path}:`, error);
+        return true;
+      }
+    }
+    return false;
   }
 
   ensureS3Settings(): void {

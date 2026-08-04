@@ -1,11 +1,12 @@
 {
   "name": "attachment-imagebed-manager",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "description": "Scan local note attachments, upload to S3-compatible storage (R2/AWS S3/MinIO), and replace links safely.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "build": "node esbuild.config.mjs production",
+    "test": "node scripts/test-auto-scan.mjs && node scripts/test-auto-scan-runtime.mjs"
   },
   "keywords": [],
   "author": "Patrick",

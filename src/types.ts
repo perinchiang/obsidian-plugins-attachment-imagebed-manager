@@ -78,6 +78,22 @@ export interface ProgressState {
   label: string;
 }
 
+export type VaultBatchPhase =
+  | "scanning"
+  | "uploading"
+  | "rewriting"
+  | "trashing"
+  | "scheduling"
+  | "done";
+
+export interface VaultBatchProgress {
+  phase: VaultBatchPhase;
+  current: number;
+  total: number;
+  notePath: string;
+  label: string;
+}
+
 export interface UploadResult {
   key: string;
   publicUrl: string;
@@ -92,6 +108,48 @@ export interface LocalFileRecord {
 export interface ReplaceResult {
   replaced: number;
   localFiles?: LocalFileRecord[];
+  deleteMode: DeletePolicy;
+  deletionStatus: "kept" | "trashed" | "scheduled" | "deferred";
+}
+
+export interface ReplaceOptions {
+  deleteMode?: DeletePolicy;
+  deferDeletion?: boolean;
+  uploadCache?: Map<string, UploadResult>;
+}
+
+export interface VaultBatchItem {
+  noteFile: TFile;
+  candidates: Candidate[];
+}
+
+export interface VaultBatchPlan {
+  items: VaultBatchItem[];
+  noteCount: number;
+  uniqueFileCount: number;
+  totalBytes: number;
+  totalReferences: number;
+  scanFailures: VaultBatchFailure[];
+  /** All notes that reference each source file, including notes excluded by a filter. */
+  referencesBySource?: Record<string, string[]>;
+}
+
+export interface VaultBatchFailure {
+  notePath: string;
+  error: string;
+}
+
+export interface VaultBatchResult {
+  notesScanned: number;
+  notesChanged: number;
+  uniqueFiles: number;
+  uploadedFiles: number;
+  replacedLinks: number;
+  deletedFiles: number;
+  scheduledFiles: number;
+  protectedFiles: number;
+  pendingLocalFiles: LocalFileRecord[];
+  failures: VaultBatchFailure[];
 }
 
 export interface ScanOptions {
@@ -99,6 +157,7 @@ export interface ScanOptions {
   enforceAttachmentRoot: boolean;
   enforceSizeRule: boolean;
   skipExtensionFilter?: boolean;
+  includeCoverReferences?: boolean;
 }
 
 export interface FileCategory {

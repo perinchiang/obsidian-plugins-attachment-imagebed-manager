@@ -93,9 +93,9 @@ export function toAmzDate(date: Date): string {
 }
 
 export function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number): T {
-  let timer: ReturnType<typeof window.setTimeout>;
+  let timer: number | undefined;
   return ((...args: Parameters<T>) => {
-    window.clearTimeout(timer);
+    if (timer !== undefined) window.clearTimeout(timer);
     timer = window.setTimeout(() => fn(...args), ms);
   }) as unknown as T;
 }

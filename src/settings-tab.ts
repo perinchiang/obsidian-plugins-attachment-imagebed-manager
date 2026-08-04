@@ -218,6 +218,10 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
       .setName(t("deletePolicy"))
       .setDesc(t("deletePolicyDesc"))
       .addDropdown((dropdown) => {
+        const selectedPolicy =
+          this.plugin.isMobile && this.plugin.settings.deletePolicy === "delayed"
+            ? "confirm"
+            : this.plugin.settings.deletePolicy;
         dropdown
           .addOption("confirm", t("deleteConfirm"))
           .addOption("immediate", t("deleteImmediate"));
@@ -225,7 +229,7 @@ export class AttachmentImagebedSettingTab extends PluginSettingTab {
           dropdown.addOption("delayed", t("deleteDelayed"));
         }
         dropdown
-          .setValue(this.plugin.settings.deletePolicy)
+          .setValue(selectedPolicy)
           .onChange((value) => {
             this.plugin.settings.deletePolicy = value as DeletePolicy;
             void save();

@@ -29,7 +29,7 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 
 // src/plugin.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/file-categories.ts
 var FILE_CATEGORIES = [
@@ -387,7 +387,8 @@ function toAmzDate(date) {
 function debounce(fn, ms) {
   let timer;
   return (...args) => {
-    window.clearTimeout(timer);
+    if (timer !== void 0)
+      window.clearTimeout(timer);
     timer = window.setTimeout(() => fn(...args), ms);
   };
 }
@@ -572,7 +573,9 @@ var I18N = {
     // Ribbon & Commands
     ribbonScan: "Scan current note attachments",
     commandScanCurrent: "Scan current note attachments",
-    commandScanVault: "Scan vault candidates without replacing",
+    commandScanVault: "Preview all local vault attachments",
+    commandBatchReplaceVault: "Directly upload & replace all vault attachments (no filtering)",
+    commandFilterBatchReplaceVault: "Filter & batch replace vault attachments",
     commandProcessDeletes: "Process delayed attachment deletes",
     // Notices
     disabled: "Attachment Imagebed Manager is disabled.",
@@ -580,6 +583,10 @@ var I18N = {
     noCandidates: "No eligible local attachments found in this note.",
     autoScanFailed: "Attachment auto scan failed: {error}",
     delayedDeleteFailed: "Attachment Imagebed Manager delayed delete failed",
+    delayedDeleteScheduled: "Delayed local-file deletion scheduled.",
+    resultUiFailed: "Replacement completed, but the result window could not be rendered.",
+    vaultScanFailed: "Vault scan failed: {error}",
+    noVaultCandidates: "No local attachments referenced by Markdown notes were found.",
     autoScanReplaced: "Attachment auto scan replaced {count} link(s).",
     noteChanged: "Note changed during upload; skipped replacement.",
     originalLinkChanged: "Original link changed before write: {link}",
@@ -619,6 +626,26 @@ var I18N = {
     vaultScanTitle: "Vault scan result",
     vaultScanFound: "Found {count} attachment(s) that would be auto-uploaded.",
     scanningVault: "Scanning vault... ({current}/{total})",
+    vaultScanSummary: "{notes} note(s), {files} unique attachment(s), {links} link(s), {size} total.",
+    vaultScanFailures: "{count} note(s) could not be scanned.",
+    batchTitle: "Batch replace vault attachments",
+    batchSummary: "Found {notes} note(s), {files} unique attachment(s), {links} link(s), {size} total.",
+    batchStart: "Start batch replacement",
+    batchRunning: "Batch replacement in progress",
+    batchPhaseScanning: "Scanning vault",
+    batchComplete: "Vault batch completed",
+    batchResultSummary: "Changed {notes} note(s), uploaded {files} file(s), replaced {links} link(s), deleted {deleted}, scheduled {scheduled}.",
+    batchProtectedFiles: "{count} local file(s) were kept because not all referencing notes succeeded.",
+    batchDeleteConfirm: "The batch completed. Delete the {count} local file(s) whose links were replaced successfully?",
+    batchFailed: "Vault batch failed: {error}",
+    batchFailedTitle: "Vault batch could not complete",
+    batchFilterTitle: "Filter vault attachments",
+    batchFilterSummary: "Selected {selected} of {total} attachment(s).",
+    batchFilterSelectAll: "Select all visible",
+    batchFilterClearAll: "Clear selection",
+    batchFilterStart: "Replace selected attachments",
+    batchFilterNoSelection: "Select at least one attachment.",
+    batchFilterNoVisible: "No attachments in this category.",
     // Settings - Status
     settingsTitle: "Attachment Imagebed Manager",
     setupComplete: "S3 storage is configured and ready to use.",
@@ -654,7 +681,8 @@ var I18N = {
     generalSettings: "Step 2: General settings",
     pluginEnabled: "Enable plugin",
     pluginEnabledDesc: "Turn on/off the scanning and replacement features.",
-    mobileHint: "Note: Scheduled auto-scan and delayed delete are disabled on mobile devices. Manual upload and replacement work normally.",
+    mobileHint: "Mobile supports manual and foreground batch replacement. Keep Obsidian in the foreground; switching apps or locking the screen may pause the task. Background auto-scan and delayed delete are disabled.",
+    mobileBatchHint: "Mobile foreground batch mode: keep Obsidian open. Switching apps or locking the screen may pause the task. Background auto-scan is not supported.",
     attachmentRoot: "Attachment folder",
     attachmentRootDesc: "Only files under this folder will be processed. Default: 99 Attachments",
     deletePolicy: "After replacing links, delete local files?",
@@ -665,7 +693,7 @@ var I18N = {
     deleteDelayHours: "Delay before delete (hours)",
     deleteDelayHoursDesc: "Files will be moved to trash after this many hours.",
     automaticScan: "Auto-scan vault periodically",
-    automaticScanDesc: "Automatically find and replace eligible attachments in the background.",
+    automaticScanDesc: "On desktop, scan while Obsidian is open at the configured interval. Mobile does not run background scans.",
     scanInterval: "Scan interval (minutes)",
     scanIntervalDesc: "How often to scan the vault. Default: 30",
     quietSeconds: "Skip recently modified files (seconds)",
@@ -705,7 +733,9 @@ var I18N = {
     // Ribbon & Commands
     ribbonScan: "\u626B\u63CF\u5F53\u524D\u6587\u6863\u9644\u4EF6",
     commandScanCurrent: "\u626B\u63CF\u5F53\u524D\u6587\u6863\u9644\u4EF6",
-    commandScanVault: "\u626B\u63CF\u5168\u5E93\u5019\u9009\u4F46\u4E0D\u66FF\u6362",
+    commandScanVault: "\u9884\u89C8\u5168\u5E93\u672C\u5730\u9644\u4EF6",
+    commandBatchReplaceVault: "\u76F4\u63A5\u6279\u91CF\u66FF\u6362\u5168\u5E93\u9644\u4EF6\uFF08\u4E0D\u7B5B\u9009\uFF09",
+    commandFilterBatchReplaceVault: "\u7B5B\u9009\u540E\u6279\u91CF\u66FF\u6362\u5168\u5E93\u9644\u4EF6",
     commandProcessDeletes: "\u5904\u7406\u5EF6\u8FDF\u5220\u9664\u9644\u4EF6",
     // Notices
     disabled: "\u9644\u4EF6\u56FE\u5E8A\u7BA1\u7406\u5668\u5DF2\u505C\u7528\u3002",
@@ -713,6 +743,10 @@ var I18N = {
     noCandidates: "\u5F53\u524D\u6587\u6863\u6CA1\u6709\u53EF\u4E0A\u4F20\u66FF\u6362\u7684\u672C\u5730\u9644\u4EF6\u3002",
     autoScanFailed: "\u9644\u4EF6\u81EA\u52A8\u626B\u63CF\u5931\u8D25\uFF1A{error}",
     delayedDeleteFailed: "\u9644\u4EF6\u56FE\u5E8A\u7BA1\u7406\u5668\u5EF6\u8FDF\u5220\u9664\u5931\u8D25",
+    delayedDeleteScheduled: "\u5DF2\u52A0\u5165\u5EF6\u8FDF\u5220\u9664\u961F\u5217\u3002",
+    resultUiFailed: "\u94FE\u63A5\u66FF\u6362\u5DF2\u5B8C\u6210\uFF0C\u4F46\u7ED3\u679C\u7A97\u53E3\u663E\u793A\u5931\u8D25\u3002",
+    vaultScanFailed: "\u5168\u5E93\u626B\u63CF\u5931\u8D25\uFF1A{error}",
+    noVaultCandidates: "\u6CA1\u6709\u627E\u5230 Markdown \u7B14\u8BB0\u5F15\u7528\u7684\u672C\u5730\u9644\u4EF6\u3002",
     autoScanReplaced: "\u9644\u4EF6\u81EA\u52A8\u626B\u63CF\u5DF2\u66FF\u6362 {count} \u4E2A\u94FE\u63A5\u3002",
     noteChanged: "\u4E0A\u4F20\u671F\u95F4\u6587\u6863\u53D1\u751F\u53D8\u5316\uFF0C\u5DF2\u8DF3\u8FC7\u66FF\u6362\u3002",
     originalLinkChanged: "\u539F\u59CB\u94FE\u63A5\u5728\u5199\u5165\u524D\u53D1\u751F\u53D8\u5316\uFF1A{link}",
@@ -752,6 +786,26 @@ var I18N = {
     vaultScanTitle: "\u5168\u5E93\u626B\u63CF\u7ED3\u679C",
     vaultScanFound: "\u627E\u5230 {count} \u4E2A\u53EF\u81EA\u52A8\u4E0A\u4F20\u7684\u9644\u4EF6\u3002",
     scanningVault: "\u6B63\u5728\u626B\u63CF\u5168\u5E93...\uFF08{current}/{total}\uFF09",
+    vaultScanSummary: "{notes} \u7BC7\u7B14\u8BB0\uFF0C{files} \u4E2A\u552F\u4E00\u9644\u4EF6\uFF0C{links} \u5904\u94FE\u63A5\uFF0C\u5171 {size}\u3002",
+    vaultScanFailures: "\u6709 {count} \u7BC7\u7B14\u8BB0\u65E0\u6CD5\u626B\u63CF\u3002",
+    batchTitle: "\u6279\u91CF\u66FF\u6362\u5168\u5E93\u9644\u4EF6",
+    batchSummary: "\u627E\u5230 {notes} \u7BC7\u7B14\u8BB0\u3001{files} \u4E2A\u552F\u4E00\u9644\u4EF6\u3001{links} \u5904\u94FE\u63A5\uFF0C\u5171 {size}\u3002",
+    batchStart: "\u5F00\u59CB\u6279\u91CF\u66FF\u6362",
+    batchRunning: "\u6B63\u5728\u6279\u91CF\u66FF\u6362\u5168\u5E93\u9644\u4EF6",
+    batchPhaseScanning: "\u6B63\u5728\u626B\u63CF\u5168\u5E93",
+    batchComplete: "\u5168\u5E93\u6279\u5904\u7406\u5B8C\u6210",
+    batchResultSummary: "\u5DF2\u4FEE\u6539 {notes} \u7BC7\u7B14\u8BB0\uFF0C\u4E0A\u4F20 {files} \u4E2A\u6587\u4EF6\uFF0C\u66FF\u6362 {links} \u5904\u94FE\u63A5\uFF0C\u5220\u9664 {deleted} \u4E2A\uFF0C\u52A0\u5165\u5EF6\u8FDF\u5220\u9664 {scheduled} \u4E2A\u3002",
+    batchProtectedFiles: "\u6709 {count} \u4E2A\u672C\u5730\u6587\u4EF6\u88AB\u4FDD\u7559\uFF0C\u56E0\u4E3A\u5E76\u975E\u6240\u6709\u5F15\u7528\u5B83\u7684\u7B14\u8BB0\u90FD\u5904\u7406\u6210\u529F\u3002",
+    batchDeleteConfirm: "\u6279\u5904\u7406\u5DF2\u5B8C\u6210\u3002\u662F\u5426\u5220\u9664 {count} \u4E2A\u5DF2\u6210\u529F\u66FF\u6362\u94FE\u63A5\u7684\u672C\u5730\u6587\u4EF6\uFF1F",
+    batchFailed: "\u5168\u5E93\u6279\u5904\u7406\u5931\u8D25\uFF1A{error}",
+    batchFailedTitle: "\u5168\u5E93\u6279\u5904\u7406\u672A\u5B8C\u6210",
+    batchFilterTitle: "\u7B5B\u9009\u5168\u5E93\u9644\u4EF6",
+    batchFilterSummary: "\u5DF2\u9009\u62E9 {selected}/{total} \u4E2A\u9644\u4EF6\u3002",
+    batchFilterSelectAll: "\u5168\u9009\u5F53\u524D\u7B5B\u9009\u7ED3\u679C",
+    batchFilterClearAll: "\u6E05\u7A7A\u9009\u62E9",
+    batchFilterStart: "\u66FF\u6362\u9009\u4E2D\u9644\u4EF6",
+    batchFilterNoSelection: "\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A\u9644\u4EF6\u3002",
+    batchFilterNoVisible: "\u5F53\u524D\u5206\u7C7B\u6CA1\u6709\u9644\u4EF6\u3002",
     // Settings - Status
     settingsTitle: "\u9644\u4EF6\u56FE\u5E8A\u7BA1\u7406\u5668",
     setupComplete: "S3 \u5B58\u50A8\u5DF2\u914D\u7F6E\uFF0C\u53EF\u4EE5\u6B63\u5E38\u4F7F\u7528\u3002",
@@ -787,7 +841,8 @@ var I18N = {
     generalSettings: "\u7B2C\u4E8C\u6B65\uFF1A\u57FA\u672C\u8BBE\u7F6E",
     pluginEnabled: "\u542F\u7528\u63D2\u4EF6",
     pluginEnabledDesc: "\u5F00\u542F\u6216\u5173\u95ED\u626B\u63CF\u548C\u66FF\u6362\u529F\u80FD\u3002",
-    mobileHint: "\u63D0\u793A\uFF1A\u79FB\u52A8\u7AEF\u4E0D\u652F\u6301\u5B9A\u65F6\u81EA\u52A8\u626B\u63CF\u548C\u5EF6\u8FDF\u5220\u9664\u3002\u624B\u52A8\u4E0A\u4F20\u548C\u66FF\u6362\u529F\u80FD\u6B63\u5E38\u4F7F\u7528\u3002",
+    mobileHint: "\u63D0\u793A\uFF1A\u79FB\u52A8\u7AEF\u652F\u6301\u624B\u52A8\u5904\u7406\u548C\u524D\u53F0\u6279\u91CF\u66FF\u6362\u3002\u8BF7\u4FDD\u6301 Obsidian \u5728\u524D\u53F0\uFF0C\u5207\u6362\u5E94\u7528\u6216\u9501\u5C4F\u53EF\u80FD\u6682\u505C\u4EFB\u52A1\u3002\u79FB\u52A8\u7AEF\u4E0D\u652F\u6301\u540E\u53F0\u81EA\u52A8\u626B\u63CF\u548C\u5EF6\u8FDF\u5220\u9664\u3002",
+    mobileBatchHint: "\u79FB\u52A8\u7AEF\u524D\u53F0\u6279\u5904\u7406\uFF1A\u8BF7\u4FDD\u6301 Obsidian \u6253\u5F00\u3002\u5207\u6362\u5E94\u7528\u6216\u9501\u5C4F\u53EF\u80FD\u6682\u505C\u4EFB\u52A1\u3002\u79FB\u52A8\u7AEF\u4E0D\u652F\u6301\u540E\u53F0\u81EA\u52A8\u626B\u63CF\u3002",
     attachmentRoot: "\u9644\u4EF6\u6587\u4EF6\u5939",
     attachmentRootDesc: "\u53EA\u5904\u7406\u6B64\u6587\u4EF6\u5939\u4E0B\u7684\u6587\u4EF6\u3002\u9ED8\u8BA4\uFF1A99 Attachments",
     deletePolicy: "\u66FF\u6362\u94FE\u63A5\u540E\uFF0C\u662F\u5426\u5220\u9664\u672C\u5730\u6587\u4EF6\uFF1F",
@@ -798,7 +853,7 @@ var I18N = {
     deleteDelayHours: "\u5EF6\u8FDF\u5220\u9664\u65F6\u95F4\uFF08\u5C0F\u65F6\uFF09",
     deleteDelayHoursDesc: "\u6587\u4EF6\u5C06\u5728\u6307\u5B9A\u5C0F\u65F6\u540E\u79FB\u5165\u56DE\u6536\u7AD9\u3002",
     automaticScan: "\u5B9A\u671F\u81EA\u52A8\u626B\u63CF\u5168\u5E93",
-    automaticScanDesc: "\u81EA\u52A8\u5728\u540E\u53F0\u67E5\u627E\u5E76\u66FF\u6362\u7B26\u5408\u6761\u4EF6\u7684\u9644\u4EF6\u3002",
+    automaticScanDesc: "\u4EC5\u684C\u9762\u7AEF\u5728 Obsidian \u8FD0\u884C\u671F\u95F4\u6309\u8BBE\u7F6E\u7684\u95F4\u9694\u626B\u63CF\u5E76\u66FF\u6362\u7B26\u5408\u6761\u4EF6\u7684\u9644\u4EF6\uFF0C\u79FB\u52A8\u7AEF\u4E0D\u8FD0\u884C\u540E\u53F0\u626B\u63CF\u3002",
     scanInterval: "\u626B\u63CF\u95F4\u9694\uFF08\u5206\u949F\uFF09",
     scanIntervalDesc: "\u591A\u4E45\u626B\u63CF\u4E00\u6B21\u5168\u5E93\u3002\u9ED8\u8BA4\uFF1A30",
     quietSeconds: "\u8DF3\u8FC7\u6700\u8FD1\u4FEE\u6539\u7684\u6587\u4EF6\uFF08\u79D2\uFF09",
@@ -861,7 +916,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
   noteFile;
   candidates;
   selected;
-  viewMode = "list";
+  viewMode;
   activeFilter = "all";
   progressBar = null;
   progressText = null;
@@ -871,6 +926,7 @@ var CandidateModal = class extends import_obsidian2.Modal {
     this.noteFile = noteFile;
     this.candidates = candidates;
     this.selected = new Set(candidates.map((c) => c.file.path));
+    this.viewMode = plugin.isMobile ? "gallery" : "list";
   }
   onOpen() {
     this.modalEl.addClass("attachment-imagebed-manager-modal");
@@ -1058,7 +1114,8 @@ var CandidateModal = class extends import_obsidian2.Modal {
     }
   }
   createPreview(candidate) {
-    const preview = (0, import_obsidian2.createDiv)({ cls: "attachment-imagebed-manager-preview" });
+    const preview = document.createElement("div");
+    preview.addClass("attachment-imagebed-manager-preview");
     if (isPreviewableImage(candidate.file.extension)) {
       const image = preview.createEl("img");
       image.src = this.app.vault.getResourcePath(candidate.file);
@@ -1080,17 +1137,34 @@ var CandidateModal = class extends import_obsidian2.Modal {
       return;
     }
     this.renderProgress(chosen.length);
+    let result;
     try {
-      const result = await this.plugin.replaceCandidates(this.noteFile, chosen, (state) => {
+      result = await this.plugin.replaceCandidates(this.noteFile, chosen, (state) => {
         this.updateProgress(state);
       });
-      new import_obsidian2.Notice(t2("replacedNotice", { count: result.replaced }));
-      this.renderDeleteConfirmation(result.localFiles || []);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("Attachment replacement failed", error);
       new import_obsidian2.Notice(t2("replaceFailed", { error: message }), 1e4);
       this.renderError(error instanceof Error ? error : new Error(message));
+      return;
+    }
+    new import_obsidian2.Notice(t2("replacedNotice", { count: result.replaced }));
+    if (result.deleteMode === "immediate") {
+      this.close();
+      return;
+    }
+    if (result.deleteMode === "delayed") {
+      new import_obsidian2.Notice(t2("delayedDeleteScheduled"));
+      this.close();
+      return;
+    }
+    try {
+      this.renderDeleteConfirmation(result.localFiles || []);
+    } catch (error) {
+      console.error("Attachment replacement result UI failed", error);
+      new import_obsidian2.Notice(t2("resultUiFailed"), 1e4);
+      this.close();
     }
   }
   renderProgress(total) {
@@ -1151,8 +1225,10 @@ var CandidateModal = class extends import_obsidian2.Modal {
     const actions = contentEl.createDiv({ cls: "attachment-imagebed-manager-actions" });
     new import_obsidian2.Setting(actions).addButton(
       (button) => button.setButtonText(t2("keepLocal")).onClick(() => this.close())
-    ).addButton(
-      (button) => button.setButtonText(t2("deleteLocal")).setDestructive().onClick(async () => {
+    ).addButton((button) => {
+      button.setButtonText(t2("deleteLocal"));
+      button.buttonEl.addClass("mod-warning");
+      button.onClick(async () => {
         try {
           await this.plugin.deleteLocalFileRecords(this.noteFile, localFiles, "manual-delete");
           new import_obsidian2.Notice(t2("movedToTrash", { count: localFiles.length }));
@@ -1163,8 +1239,8 @@ var CandidateModal = class extends import_obsidian2.Modal {
           new import_obsidian2.Notice(t2("localDeleteFailed", { error: message }), 1e4);
           this.renderError(error instanceof Error ? error : new Error(message));
         }
-      })
-    );
+      });
+    });
   }
   renderError(error) {
     const t2 = makeT(this.plugin);
@@ -1180,39 +1256,403 @@ var CandidateModal = class extends import_obsidian2.Modal {
   }
 };
 
-// src/dry-run-modal.ts
+// src/vault-batch-modal.ts
 var import_obsidian3 = require("obsidian");
 function makeT2(plugin) {
   return (key, params) => plugin.t(key, params);
 }
-var DryRunModal = class extends import_obsidian3.Modal {
+var VaultBatchModal = class extends import_obsidian3.Modal {
   plugin;
-  count;
-  samples;
-  constructor(app, plugin, count, samples) {
+  plan;
+  progressText = null;
+  running = false;
+  constructor(app, plugin, plan) {
     super(app);
     this.plugin = plugin;
-    this.count = count;
-    this.samples = samples;
+    this.plan = plan;
   }
   onOpen() {
+    this.modalEl.addClass("attachment-imagebed-manager-modal");
+    this.renderPlan();
+  }
+  renderPlan() {
     const t2 = makeT2(this.plugin);
     const { contentEl } = this;
     contentEl.empty();
-    new import_obsidian3.Setting(contentEl).setName(t2("vaultScanTitle")).setHeading();
-    contentEl.createEl("p", { text: t2("vaultScanFound", { count: this.count }) });
-    if (this.samples.length) {
+    new import_obsidian3.Setting(contentEl).setName(t2("batchTitle")).setHeading();
+    contentEl.createEl("p", {
+      text: t2("batchSummary", {
+        notes: this.plan.noteCount,
+        files: this.plan.uniqueFileCount,
+        links: this.plan.totalReferences,
+        size: formatBytes(this.plan.totalBytes)
+      }),
+      cls: "attachment-imagebed-manager-summary"
+    });
+    if (this.plugin.isMobile) {
+      contentEl.createEl("p", {
+        text: t2("mobileBatchHint"),
+        cls: "attachment-imagebed-manager-mobile-hint"
+      });
+    }
+    if (this.plan.scanFailures.length) {
+      contentEl.createEl("p", {
+        text: t2("vaultScanFailures", { count: this.plan.scanFailures.length }),
+        cls: "attachment-imagebed-manager-summary"
+      });
+    }
+    const actions = contentEl.createDiv({ cls: "attachment-imagebed-manager-actions" });
+    new import_obsidian3.Setting(actions).addButton((button) => button.setButtonText(t2("cancel")).onClick(() => this.close())).addButton(
+      (button) => button.setButtonText(t2("batchStart")).setCta().onClick(() => void this.startBatch())
+    );
+  }
+  async startBatch() {
+    if (this.running)
+      return;
+    this.running = true;
+    this.renderProgress();
+    try {
+      const result = await this.plugin.runVaultBatch(this.plan, (state) => this.updateProgress(state));
+      this.renderResult(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Vault batch failed", error);
+      new import_obsidian3.Notice(this.plugin.t("batchFailed", { error: message }), 1e4);
+      this.renderError(message);
+    } finally {
+      this.running = false;
+    }
+  }
+  renderProgress() {
+    const t2 = makeT2(this.plugin);
+    const { contentEl } = this;
+    contentEl.empty();
+    new import_obsidian3.Setting(contentEl).setName(t2("batchRunning")).setHeading();
+    this.progressText = contentEl.createDiv({
+      text: t2("starting"),
+      cls: "attachment-imagebed-manager-summary"
+    });
+  }
+  updateProgress(state) {
+    if (!this.progressText)
+      return;
+    const t2 = makeT2(this.plugin);
+    const phaseMap = {
+      scanning: t2("batchPhaseScanning"),
+      uploading: t2("phaseUploading"),
+      rewriting: t2("phaseRewriting"),
+      trashing: t2("phaseTrashing"),
+      scheduling: t2("phaseScheduling"),
+      done: t2("phaseDone")
+    };
+    const phase = phaseMap[state.phase] || state.phase;
+    const position = state.total ? ` (${state.current}/${state.total})` : "";
+    this.progressText.setText(`${phase}${position}: ${state.label || state.notePath}`);
+  }
+  renderResult(result) {
+    const t2 = makeT2(this.plugin);
+    const { contentEl } = this;
+    contentEl.empty();
+    new import_obsidian3.Setting(contentEl).setName(t2("batchComplete")).setHeading();
+    contentEl.createEl("p", {
+      text: t2("batchResultSummary", {
+        notes: result.notesChanged,
+        files: result.uploadedFiles,
+        links: result.replacedLinks,
+        deleted: result.deletedFiles,
+        scheduled: result.scheduledFiles
+      }),
+      cls: "attachment-imagebed-manager-summary"
+    });
+    if (result.protectedFiles) {
+      contentEl.createEl("p", {
+        text: t2("batchProtectedFiles", { count: result.protectedFiles }),
+        cls: "attachment-imagebed-manager-summary"
+      });
+    }
+    if (result.failures.length) {
       contentEl.createEl("pre", {
-        text: this.samples.join("\n"),
+        text: result.failures.map((failure) => `${failure.notePath}: ${failure.error}`).join("\n"),
         cls: "attachment-imagebed-manager-log"
+      });
+    }
+    const actions = contentEl.createDiv({ cls: "attachment-imagebed-manager-actions" });
+    if (result.pendingLocalFiles.length) {
+      contentEl.createEl("p", {
+        text: t2("batchDeleteConfirm", { count: result.pendingLocalFiles.length }),
+        cls: "attachment-imagebed-manager-summary"
+      });
+      new import_obsidian3.Setting(actions).addButton((button) => button.setButtonText(t2("keepLocal")).onClick(() => this.close())).addButton((button) => {
+        button.setButtonText(t2("deleteLocal"));
+        button.buttonEl.addClass("mod-warning");
+        button.onClick(() => void this.deletePendingFiles(result.pendingLocalFiles));
+      });
+    } else {
+      new import_obsidian3.Setting(actions).addButton(
+        (button) => button.setButtonText(t2("close")).onClick(() => this.close())
+      );
+    }
+  }
+  async deletePendingFiles(files) {
+    const t2 = makeT2(this.plugin);
+    let deleted = 0;
+    try {
+      for (const record of files) {
+        const notePath = this.plugin.firstReferencingNote(record.path, this.plan) || "vault-batch";
+        await this.plugin.deleteLocalFileRecords({ path: notePath }, [record], "manual-delete");
+        deleted += 1;
+      }
+      new import_obsidian3.Notice(t2("movedToTrash", { count: deleted }));
+      this.close();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      new import_obsidian3.Notice(t2("localDeleteFailed", { error: message }), 1e4);
+      this.renderError(message);
+    }
+  }
+  renderError(message) {
+    const t2 = makeT2(this.plugin);
+    const { contentEl } = this;
+    contentEl.empty();
+    new import_obsidian3.Setting(contentEl).setName(t2("batchFailedTitle")).setHeading();
+    contentEl.createEl("p", {
+      text: message,
+      cls: "attachment-imagebed-manager-summary"
+    });
+    new import_obsidian3.Setting(contentEl).addButton(
+      (button) => button.setButtonText(t2("close")).onClick(() => this.close())
+    );
+  }
+};
+
+// src/vault-batch-filter-modal.ts
+var import_obsidian4 = require("obsidian");
+var VaultBatchFilterModal = class extends import_obsidian4.Modal {
+  plugin;
+  plan;
+  selectedPaths = /* @__PURE__ */ new Set();
+  activeCategory = "all";
+  choices;
+  constructor(app, plugin, plan) {
+    super(app);
+    this.plugin = plugin;
+    this.plan = plan;
+    this.choices = this.buildChoices(plan);
+    for (const choice of this.choices)
+      this.selectedPaths.add(choice.path);
+  }
+  onOpen() {
+    this.modalEl.addClass("attachment-imagebed-manager-modal");
+    this.render();
+  }
+  buildChoices(plan) {
+    const byPath = /* @__PURE__ */ new Map();
+    for (const item of plan.items) {
+      for (const candidate of item.candidates) {
+        const existing = byPath.get(candidate.file.path);
+        if (existing) {
+          existing.references += candidate.refs.length;
+          continue;
+        }
+        const category = getCategoryForExt(candidate.ext);
+        byPath.set(candidate.file.path, {
+          path: candidate.file.path,
+          name: candidate.file.name,
+          ext: candidate.ext,
+          sizeBytes: candidate.sizeBytes,
+          references: candidate.refs.length,
+          candidate,
+          category: category?.id || "other"
+        });
+      }
+    }
+    return Array.from(byPath.values()).sort((a, b) => a.path.localeCompare(b.path));
+  }
+  categoryLabel(category) {
+    if (category === "all")
+      return this.plugin.t("filterAll");
+    if (category === "other")
+      return this.plugin.t("filterOther");
+    const definition = FILE_CATEGORIES.find((entry) => entry.id === category);
+    return definition ? this.plugin.t(definition.nameKey) : category;
+  }
+  visibleChoices() {
+    if (this.activeCategory === "all")
+      return this.choices;
+    return this.choices.filter((choice) => choice.category === this.activeCategory);
+  }
+  render() {
+    const { contentEl } = this;
+    contentEl.empty();
+    new import_obsidian4.Setting(contentEl).setName(this.plugin.t("batchFilterTitle")).setHeading();
+    contentEl.createEl("p", {
+      text: this.plugin.t("batchFilterSummary", {
+        selected: this.selectedPaths.size,
+        total: this.choices.length
+      }),
+      cls: "attachment-imagebed-manager-summary"
+    });
+    if (this.plugin.isMobile) {
+      contentEl.createEl("p", {
+        text: this.plugin.t("mobileBatchHint"),
+        cls: "attachment-imagebed-manager-mobile-hint"
+      });
+    }
+    const categories = contentEl.createDiv({
+      cls: "attachment-imagebed-manager-batch-filter-categories"
+    });
+    const categoryIds = ["all", ...FILE_CATEGORIES.map((entry) => entry.id), "other"];
+    for (const category of categoryIds) {
+      const count = category === "all" ? this.choices.length : this.choices.filter((choice) => choice.category === category).length;
+      if (category !== "all" && count === 0)
+        continue;
+      const button = categories.createEl("button", {
+        text: `${this.categoryLabel(category)} ${count}`,
+        cls: "attachment-imagebed-manager-batch-filter-category"
+      });
+      if (category === this.activeCategory)
+        button.addClass("is-active");
+      button.addEventListener("click", () => {
+        this.activeCategory = category;
+        this.render();
+      });
+    }
+    const visible = this.visibleChoices();
+    const toolbar = contentEl.createDiv({ cls: "attachment-imagebed-manager-batch-filter-toolbar" });
+    const visibleSelected = visible.filter((choice) => this.selectedPaths.has(choice.path)).length;
+    const selectAll = toolbar.createEl("label", {
+      cls: "attachment-imagebed-manager-select-all"
+    });
+    const selectAllInput = selectAll.createEl("input", { type: "checkbox" });
+    selectAllInput.checked = visible.length > 0 && visibleSelected === visible.length;
+    selectAllInput.indeterminate = visibleSelected > 0 && visibleSelected < visible.length;
+    selectAllInput.addEventListener("change", () => {
+      for (const choice of visible) {
+        if (selectAllInput.checked)
+          this.selectedPaths.add(choice.path);
+        else
+          this.selectedPaths.delete(choice.path);
+      }
+      this.render();
+    });
+    selectAll.createSpan({ text: this.plugin.t("batchFilterSelectAll") });
+    const clearButton = toolbar.createEl("button", {
+      text: this.plugin.t("batchFilterClearAll"),
+      cls: "mod-muted"
+    });
+    clearButton.addEventListener("click", () => {
+      this.selectedPaths.clear();
+      this.render();
+    });
+    const list = contentEl.createDiv({ cls: "attachment-imagebed-manager-batch-filter-list" });
+    if (!visible.length) {
+      list.createEl("p", {
+        text: this.plugin.t("batchFilterNoVisible"),
+        cls: "attachment-imagebed-manager-summary"
+      });
+    }
+    for (const choice of visible) {
+      const row = list.createDiv({ cls: "attachment-imagebed-manager-batch-filter-row" });
+      const checkbox = row.createEl("input", { type: "checkbox" });
+      checkbox.checked = this.selectedPaths.has(choice.path);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked)
+          this.selectedPaths.add(choice.path);
+        else
+          this.selectedPaths.delete(choice.path);
+        this.render();
+      });
+      const details = row.createDiv({ cls: "attachment-imagebed-manager-batch-filter-details" });
+      details.createDiv({ text: choice.name, cls: "attachment-imagebed-manager-batch-filter-name" });
+      details.createDiv({
+        text: choice.path,
+        cls: "attachment-imagebed-manager-batch-filter-path"
+      });
+      const meta = row.createDiv({ cls: "attachment-imagebed-manager-batch-filter-meta" });
+      meta.createSpan({ text: formatBytes(choice.sizeBytes) });
+      meta.createSpan({ text: `${choice.ext.toUpperCase()} \xB7 ${choice.references}` });
+    }
+    const actions = contentEl.createDiv({ cls: "attachment-imagebed-manager-actions" });
+    new import_obsidian4.Setting(actions).addButton((button) => button.setButtonText(this.plugin.t("cancel")).onClick(() => this.close())).addButton(
+      (button) => button.setButtonText(this.plugin.t("batchFilterStart")).setCta().onClick(() => void this.startBatch())
+    );
+  }
+  startBatch() {
+    if (this.selectedPaths.size === 0) {
+      new import_obsidian4.Notice(this.plugin.t("batchFilterNoSelection"));
+      return;
+    }
+    const items = this.plan.items.map((item) => ({
+      noteFile: item.noteFile,
+      candidates: item.candidates.filter((candidate) => this.selectedPaths.has(candidate.file.path))
+    })).filter((item) => item.candidates.length > 0);
+    const selectedFiles = /* @__PURE__ */ new Map();
+    let totalReferences = 0;
+    for (const item of items) {
+      for (const candidate of item.candidates) {
+        selectedFiles.set(candidate.file.path, candidate);
+        totalReferences += candidate.refs.length;
+      }
+    }
+    const filteredPlan = {
+      items,
+      noteCount: items.length,
+      uniqueFileCount: selectedFiles.size,
+      totalBytes: Array.from(selectedFiles.values()).reduce((sum, candidate) => sum + candidate.sizeBytes, 0),
+      totalReferences,
+      scanFailures: [...this.plan.scanFailures],
+      referencesBySource: this.plan.referencesBySource
+    };
+    this.close();
+    new VaultBatchModal(this.app, this.plugin, filteredPlan).open();
+  }
+};
+
+// src/dry-run-modal.ts
+var import_obsidian5 = require("obsidian");
+function makeT3(plugin) {
+  return (key, params) => plugin.t(key, params);
+}
+var DryRunModal = class extends import_obsidian5.Modal {
+  plugin;
+  plan;
+  constructor(app, plugin, plan) {
+    super(app);
+    this.plugin = plugin;
+    this.plan = plan;
+  }
+  onOpen() {
+    const t2 = makeT3(this.plugin);
+    const { contentEl } = this;
+    contentEl.empty();
+    new import_obsidian5.Setting(contentEl).setName(t2("vaultScanTitle")).setHeading();
+    contentEl.createEl("p", {
+      text: t2("vaultScanSummary", {
+        notes: this.plan.noteCount,
+        files: this.plan.uniqueFileCount,
+        links: this.plan.totalReferences,
+        size: formatBytes(this.plan.totalBytes)
+      })
+    });
+    const samples = this.plan.items.flatMap((item) => item.candidates.slice(0, 3).map((candidate) => `${item.noteFile.path} -> ${candidate.file.path}`)).slice(0, 20);
+    if (samples.length) {
+      contentEl.createEl("pre", {
+        text: samples.join("\n"),
+        cls: "attachment-imagebed-manager-log"
+      });
+    }
+    if (this.plan.scanFailures.length) {
+      contentEl.createEl("p", {
+        text: t2("vaultScanFailures", { count: this.plan.scanFailures.length }),
+        cls: "attachment-imagebed-manager-summary"
       });
     }
   }
 };
 
 // src/settings-tab.ts
-var import_obsidian4 = require("obsidian");
-function makeT3(plugin) {
+var import_obsidian6 = require("obsidian");
+function makeT4(plugin) {
   return (key, params) => plugin.t(key, params);
 }
 var CATEGORY_ICONS2 = {
@@ -1221,7 +1661,7 @@ var CATEGORY_ICONS2 = {
   audio: "\u{1F3B5}",
   document: "\u{1F4C4}"
 };
-var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingTab {
+var AttachmentImagebedSettingTab = class extends import_obsidian6.PluginSettingTab {
   plugin;
   constructor(app, plugin) {
     super(app, plugin);
@@ -1230,8 +1670,8 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    const t2 = makeT3(this.plugin);
-    new import_obsidian4.Setting(containerEl).setName(t2("settingsTitle")).setHeading();
+    const t2 = makeT4(this.plugin);
+    new import_obsidian6.Setting(containerEl).setName(t2("settingsTitle")).setHeading();
     this.renderSetupStatus(containerEl);
     this.renderS3Settings(containerEl);
     this.renderGeneralSettings(containerEl);
@@ -1245,7 +1685,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     return !!(s3.endpoint.trim() && s3.bucketName.trim() && s3.accessKeyId.trim() && s3.secretAccessKey.trim() && s3.customDomainName.trim());
   }
   renderSetupStatus(containerEl) {
-    const t2 = makeT3(this.plugin);
+    const t2 = makeT4(this.plugin);
     const configured = this.isS3Configured();
     const statusEl = containerEl.createDiv({ cls: "attachment-imagebed-manager-status" });
     const icon = statusEl.createEl("span", {
@@ -1257,15 +1697,15 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     });
   }
   renderS3Settings(containerEl) {
-    const t2 = makeT3(this.plugin);
+    const t2 = makeT4(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
-    new import_obsidian4.Setting(containerEl).setName(t2("s3Storage")).setHeading();
+    new import_obsidian6.Setting(containerEl).setName(t2("s3Storage")).setHeading();
     containerEl.createEl("p", {
       text: t2("s3SetupGuide"),
       cls: "attachment-imagebed-manager-guide"
     });
-    new import_obsidian4.Setting(containerEl).setName(t2("provider")).setDesc(t2("providerDesc")).addDropdown(
+    new import_obsidian6.Setting(containerEl).setName(t2("provider")).setDesc(t2("providerDesc")).addDropdown(
       (dropdown) => dropdown.addOption("r2", t2("providerR2")).addOption("s3", t2("providerS3")).addOption("minio", t2("providerMinio")).addOption("custom", t2("providerCustom")).setValue(this.plugin.settings.s3.provider).onChange((value) => {
         const provider = value;
         this.plugin.settings.s3.provider = provider;
@@ -1279,7 +1719,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
       })
     );
     if (this.plugin.settings.s3.provider !== "r2") {
-      new import_obsidian4.Setting(containerEl).setName(t2("region")).setDesc(t2("regionDesc")).addText(
+      new import_obsidian6.Setting(containerEl).setName(t2("region")).setDesc(t2("regionDesc")).addText(
         (text) => text.setValue(this.plugin.settings.s3.region).onChange((value) => {
           this.plugin.settings.s3.region = value.trim() || "us-east-1";
           void debouncedSave();
@@ -1294,7 +1734,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
       ["customDomainName", t2("publicDomain"), t2("publicDomainDesc"), false]
     ];
     for (const [key, label, desc, isPassword] of s3Fields) {
-      new import_obsidian4.Setting(containerEl).setName(label).setDesc(desc).addText((text) => {
+      new import_obsidian6.Setting(containerEl).setName(label).setDesc(desc).addText((text) => {
         if (isPassword)
           text.inputEl.type = "password";
         text.setPlaceholder(isPassword ? "********" : "");
@@ -1331,28 +1771,28 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
         });
       });
     }
-    new import_obsidian4.Setting(containerEl).setName(t2("objectPathTemplate")).setDesc(t2("pathTemplateDesc")).addText(
+    new import_obsidian6.Setting(containerEl).setName(t2("objectPathTemplate")).setDesc(t2("pathTemplateDesc")).addText(
       (text) => text.setPlaceholder("attachments/{ext}/{hash2}/{hash}.{ext}").setValue(String(this.plugin.settings.s3.pathTemplate || "")).onChange((value) => {
         this.plugin.settings.s3.pathTemplate = value.trim();
         void debouncedSave();
       })
     );
-    new import_obsidian4.Setting(containerEl).setName(t2("testConnection")).setDesc(t2("testConnectionDesc")).addButton(
+    new import_obsidian6.Setting(containerEl).setName(t2("testConnection")).setDesc(t2("testConnectionDesc")).addButton(
       (button) => button.setButtonText(t2("testConnection")).setCta().onClick(async () => {
         try {
           this.plugin.ensureS3Settings();
         } catch (error) {
-          new import_obsidian4.Notice(error instanceof Error ? error.message : String(error));
+          new import_obsidian6.Notice(error instanceof Error ? error.message : String(error));
           return;
         }
         button.setButtonText(t2("testing"));
         button.setDisabled(true);
         try {
           await testS3Connection(this.plugin.settings.s3);
-          new import_obsidian4.Notice(t2("testConnectionSuccess"));
+          new import_obsidian6.Notice(t2("testConnectionSuccess"));
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
-          new import_obsidian4.Notice(t2("testConnectionFailed", { error: errMsg }), 1e4);
+          new import_obsidian6.Notice(t2("testConnectionFailed", { error: errMsg }), 1e4);
         } finally {
           button.setButtonText(t2("testConnection"));
           button.setDisabled(false);
@@ -1361,36 +1801,37 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     );
   }
   renderGeneralSettings(containerEl) {
-    const t2 = makeT3(this.plugin);
+    const t2 = makeT4(this.plugin);
     const save = () => this.plugin.saveSettings();
     const debouncedSave = debounce(save, 500);
-    new import_obsidian4.Setting(containerEl).setName(t2("generalSettings")).setHeading();
-    new import_obsidian4.Setting(containerEl).setName(t2("pluginEnabled")).setDesc(t2("pluginEnabledDesc")).addToggle(
+    new import_obsidian6.Setting(containerEl).setName(t2("generalSettings")).setHeading();
+    new import_obsidian6.Setting(containerEl).setName(t2("pluginEnabled")).setDesc(t2("pluginEnabledDesc")).addToggle(
       (toggle) => toggle.setValue(this.plugin.settings.enabled).onChange((value) => {
         this.plugin.settings.enabled = value;
         this.plugin.configureAutoScan();
         void save();
       })
     );
-    new import_obsidian4.Setting(containerEl).setName(t2("attachmentRoot")).setDesc(t2("attachmentRootDesc")).addText(
+    new import_obsidian6.Setting(containerEl).setName(t2("attachmentRoot")).setDesc(t2("attachmentRootDesc")).addText(
       (text) => text.setValue(this.plugin.settings.attachmentRoot).onChange((value) => {
         this.plugin.settings.attachmentRoot = value.trim() || "99 Attachments";
         void save();
       })
     );
-    new import_obsidian4.Setting(containerEl).setName(t2("deletePolicy")).setDesc(t2("deletePolicyDesc")).addDropdown((dropdown) => {
+    new import_obsidian6.Setting(containerEl).setName(t2("deletePolicy")).setDesc(t2("deletePolicyDesc")).addDropdown((dropdown) => {
+      const selectedPolicy = this.plugin.isMobile && this.plugin.settings.deletePolicy === "delayed" ? "confirm" : this.plugin.settings.deletePolicy;
       dropdown.addOption("confirm", t2("deleteConfirm")).addOption("immediate", t2("deleteImmediate"));
       if (!this.plugin.isMobile) {
         dropdown.addOption("delayed", t2("deleteDelayed"));
       }
-      dropdown.setValue(this.plugin.settings.deletePolicy).onChange((value) => {
+      dropdown.setValue(selectedPolicy).onChange((value) => {
         this.plugin.settings.deletePolicy = value;
         void save();
         this.display();
       });
     });
     if (!this.plugin.isMobile && this.plugin.settings.deletePolicy === "delayed") {
-      new import_obsidian4.Setting(containerEl).setName(t2("deleteDelayHours")).setDesc(t2("deleteDelayHoursDesc")).addText(
+      new import_obsidian6.Setting(containerEl).setName(t2("deleteDelayHours")).setDesc(t2("deleteDelayHoursDesc")).addText(
         (text) => text.setValue(String(this.plugin.settings.autoDeleteDelayHours)).onChange((value) => {
           this.plugin.settings.autoDeleteDelayHours = Math.max(0, Number(value) || 24);
           void debouncedSave();
@@ -1398,7 +1839,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
       );
     }
     if (!this.plugin.isMobile) {
-      new import_obsidian4.Setting(containerEl).setName(t2("automaticScan")).setDesc(t2("automaticScanDesc")).addToggle(
+      new import_obsidian6.Setting(containerEl).setName(t2("automaticScan")).setDesc(t2("automaticScanDesc")).addToggle(
         (toggle) => toggle.setValue(this.plugin.settings.autoScanEnabled).onChange((value) => {
           this.plugin.settings.autoScanEnabled = value;
           this.plugin.configureAutoScan();
@@ -1407,20 +1848,20 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
         })
       );
       if (this.plugin.settings.autoScanEnabled) {
-        new import_obsidian4.Setting(containerEl).setName(t2("scanInterval")).setDesc(t2("scanIntervalDesc")).addText(
+        new import_obsidian6.Setting(containerEl).setName(t2("scanInterval")).setDesc(t2("scanIntervalDesc")).addText(
           (text) => text.setValue(String(this.plugin.settings.scanIntervalMinutes)).onChange((value) => {
             this.plugin.settings.scanIntervalMinutes = Number(value) || 30;
             this.plugin.configureAutoScan();
             void debouncedSave();
           })
         );
-        new import_obsidian4.Setting(containerEl).setName(t2("quietSeconds")).setDesc(t2("quietSecondsDesc")).addText(
+        new import_obsidian6.Setting(containerEl).setName(t2("quietSeconds")).setDesc(t2("quietSecondsDesc")).addText(
           (text) => text.setValue(String(this.plugin.settings.quietSeconds)).onChange((value) => {
             this.plugin.settings.quietSeconds = Number(value) || 0;
             void debouncedSave();
           })
         );
-        new import_obsidian4.Setting(containerEl).setName(t2("autoScanMinSize")).setDesc(t2("autoScanMinSizeDesc")).addText(
+        new import_obsidian6.Setting(containerEl).setName(t2("autoScanMinSize")).setDesc(t2("autoScanMinSizeDesc")).addText(
           (text) => text.setValue(String(this.plugin.settings.autoScanMinSizeMiB || 0)).onChange((value) => {
             this.plugin.settings.autoScanMinSizeMiB = Math.max(0, Number(value) || 0);
             void debouncedSave();
@@ -1435,8 +1876,8 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     }
   }
   renderFileTypeSettings(containerEl) {
-    const t2 = makeT3(this.plugin);
-    new import_obsidian4.Setting(containerEl).setName(t2("fileTypes")).setHeading();
+    const t2 = makeT4(this.plugin);
+    new import_obsidian6.Setting(containerEl).setName(t2("fileTypes")).setHeading();
     containerEl.createEl("p", {
       text: t2("fileTypesDesc"),
       cls: "attachment-imagebed-manager-guide"
@@ -1447,7 +1888,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     this.renderCustomExtensions(containerEl);
   }
   renderCategory(containerEl, category) {
-    const t2 = makeT3(this.plugin);
+    const t2 = makeT4(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -1523,7 +1964,7 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     });
   }
   renderCustomExtensions(containerEl) {
-    const t2 = makeT3(this.plugin);
+    const t2 = makeT4(this.plugin);
     const settings = this.plugin.settings;
     const enabledSet = new Set(settings.enabledExtensions);
     const autoSet = new Set(settings.autoCandidateExts);
@@ -1600,11 +2041,11 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
     }
   }
   renderLogSection(containerEl) {
-    const t2 = makeT3(this.plugin);
+    const t2 = makeT4(this.plugin);
     const settings = this.plugin.settings;
-    new import_obsidian4.Setting(containerEl).setName(t2("recentLog")).setHeading();
+    new import_obsidian6.Setting(containerEl).setName(t2("recentLog")).setHeading();
     if ((settings.pendingDeletes || []).length) {
-      new import_obsidian4.Setting(containerEl).setName(t2("pendingDeletes")).setHeading();
+      new import_obsidian6.Setting(containerEl).setName(t2("pendingDeletes")).setHeading();
       containerEl.createEl("pre", {
         text: settings.pendingDeletes.slice(0, 20).map((entry) => `${new Date(entry.dueAt).toLocaleString()} ${entry.sourcePath}`).join("\n"),
         cls: "attachment-imagebed-manager-log"
@@ -1625,15 +2066,35 @@ var AttachmentImagebedSettingTab = class extends import_obsidian4.PluginSettingT
   }
 };
 
+// src/auto-scan-policy.ts
+function shouldScheduleAutoScan(input) {
+  return !input.isMobile && input.enabled && input.autoScanEnabled && !input.running;
+}
+function normalizeScanIntervalMinutes(value) {
+  const parsed = Number(value);
+  return Math.max(1, parsed || 30);
+}
+function isFileQuiet(modifiedAt, quietSeconds, now = Date.now()) {
+  const quietMs = Math.max(0, Number(quietSeconds) || 0) * 1e3;
+  if (!quietMs)
+    return true;
+  return now - modifiedAt >= quietMs;
+}
+function meetsAutoScanSize(sizeBytes, minMiB) {
+  const minBytes = Math.max(0, Number(minMiB) || 0) * 1024 * 1024;
+  return sizeBytes >= minBytes;
+}
+
 // src/plugin.ts
-var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
+var AttachmentImagebedManagerPlugin = class extends import_obsidian7.Plugin {
   locale;
   autoScanTimer = null;
+  autoScanRunning = false;
   isMobile = false;
   async onload() {
     await this.loadSettings();
-    this.locale = detectLocaleFromApp(import_obsidian5.getLanguage);
-    this.isMobile = import_obsidian5.Platform.isMobile;
+    this.locale = detectLocaleFromApp(import_obsidian7.getLanguage);
+    this.isMobile = import_obsidian7.Platform.isMobile;
     this.addRibbonIcon("upload-cloud", this.t("ribbonScan"), () => {
       void this.scanCurrentNote();
     });
@@ -1648,10 +2109,22 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
       callback: () => this.scanVaultDryRun()
     });
     this.addCommand({
-      id: "process-delayed-deletes",
-      name: this.t("commandProcessDeletes"),
-      callback: () => this.processPendingDeletes()
+      id: "batch-replace-vault-attachments",
+      name: this.t("commandBatchReplaceVault"),
+      callback: () => this.openVaultBatch()
     });
+    this.addCommand({
+      id: "filter-batch-replace-vault-attachments",
+      name: this.t("commandFilterBatchReplaceVault"),
+      callback: () => this.openFilteredVaultBatch()
+    });
+    if (!this.isMobile) {
+      this.addCommand({
+        id: "process-delayed-deletes",
+        name: this.t("commandProcessDeletes"),
+        callback: () => this.processPendingDeletes()
+      });
+    }
     this.addSettingTab(new AttachmentImagebedSettingTab(this.app, this));
     if (!this.isMobile) {
       await this.processPendingDeletes();
@@ -1685,118 +2158,338 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
     if (this.autoScanTimer)
       window.clearInterval(this.autoScanTimer);
     this.autoScanTimer = null;
-    if (this.isMobile)
+    if (!shouldScheduleAutoScan({
+      isMobile: this.isMobile,
+      enabled: this.settings.enabled,
+      autoScanEnabled: this.settings.autoScanEnabled
+    }))
       return;
-    if (!this.settings.enabled || !this.settings.autoScanEnabled)
-      return;
-    const minutes = Math.max(1, Number(this.settings.scanIntervalMinutes) || 30);
+    const minutes = normalizeScanIntervalMinutes(this.settings.scanIntervalMinutes);
     this.autoScanTimer = window.setInterval(() => {
       this.runAutoScan().catch((error) => {
         console.error("Auto scan failed", error);
-        new import_obsidian5.Notice(this.t("autoScanFailed", { error: error instanceof Error ? error.message : String(error) }));
+        new import_obsidian7.Notice(this.t("autoScanFailed", { error: error instanceof Error ? error.message : String(error) }));
       });
     }, minutes * 60 * 1e3);
   }
   async scanCurrentNote() {
     if (!this.settings.enabled) {
-      new import_obsidian5.Notice(this.t("disabled"));
+      new import_obsidian7.Notice(this.t("disabled"));
       return;
     }
     const activeFile = this.app.workspace.getActiveFile();
     if (!activeFile || activeFile.extension !== "md") {
-      new import_obsidian5.Notice(this.t("openMarkdownFirst"));
+      new import_obsidian7.Notice(this.t("openMarkdownFirst"));
       return;
     }
     try {
       this.ensureS3Settings();
     } catch (error) {
-      new import_obsidian5.Notice(error instanceof Error ? error.message : String(error));
+      new import_obsidian7.Notice(error instanceof Error ? error.message : String(error));
       return;
     }
     const candidates = await this.findCandidatesInNote(activeFile, {
       requireAutoCandidate: false,
       enforceAttachmentRoot: false,
       enforceSizeRule: false,
-      skipExtensionFilter: true
+      skipExtensionFilter: true,
+      includeCoverReferences: true
     });
     if (candidates.length === 0) {
-      new import_obsidian5.Notice(this.t("noCandidates"));
+      new import_obsidian7.Notice(this.t("noCandidates"));
       return;
     }
     new CandidateModal(this.app, this, activeFile, candidates).open();
   }
   async scanVaultDryRun() {
     const files = this.app.vault.getMarkdownFiles();
-    let count = 0;
-    const samples = [];
-    const notice = new import_obsidian5.Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    const notice = new import_obsidian7.Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    const plan = await this.scanVaultPlan((state) => {
+      notice.setMessage(this.t("scanningVault", { current: state.current, total: state.total }));
+    });
+    notice.hide();
+    new DryRunModal(this.app, this, plan).open();
+  }
+  async openVaultBatch() {
+    if (!this.settings.enabled) {
+      new import_obsidian7.Notice(this.t("disabled"));
+      return;
+    }
+    const files = this.app.vault.getMarkdownFiles();
+    const notice = new import_obsidian7.Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    try {
+      const plan = await this.scanVaultPlan((state) => {
+        notice.setMessage(this.t("scanningVault", { current: state.current, total: state.total }));
+      });
+      notice.hide();
+      if (!plan.items.length) {
+        new import_obsidian7.Notice(this.t("noVaultCandidates"));
+        return;
+      }
+      new VaultBatchModal(this.app, this, plan).open();
+    } catch (error) {
+      notice.hide();
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Vault scan failed", error);
+      new import_obsidian7.Notice(this.t("vaultScanFailed", { error: message }), 1e4);
+    }
+  }
+  async openFilteredVaultBatch() {
+    if (!this.settings.enabled) {
+      new import_obsidian7.Notice(this.t("disabled"));
+      return;
+    }
+    const files = this.app.vault.getMarkdownFiles();
+    const notice = new import_obsidian7.Notice(this.t("scanningVault", { current: 0, total: files.length }), 0);
+    try {
+      const plan = await this.scanVaultPlan((state) => {
+        notice.setMessage(this.t("scanningVault", { current: state.current, total: state.total }));
+      });
+      notice.hide();
+      if (!plan.items.length) {
+        new import_obsidian7.Notice(this.t("noVaultCandidates"));
+        return;
+      }
+      new VaultBatchFilterModal(this.app, this, plan).open();
+    } catch (error) {
+      notice.hide();
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Filtered vault scan failed", error);
+      new import_obsidian7.Notice(this.t("vaultScanFailed", { error: message }), 1e4);
+    }
+  }
+  async scanVaultPlan(onProgress) {
+    const files = this.app.vault.getMarkdownFiles();
+    const items = [];
+    const uniqueFiles = /* @__PURE__ */ new Map();
+    const referencesBySource = /* @__PURE__ */ new Map();
+    const scanFailures = [];
+    let totalReferences = 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (i % 50 === 0) {
-        notice.setMessage(this.t("scanningVault", { current: i, total: files.length }));
-      }
+      onProgress?.({
+        phase: "scanning",
+        current: i + 1,
+        total: files.length,
+        notePath: file.path,
+        label: file.name
+      });
       try {
         const candidates = await this.findCandidatesInNote(file, {
-          requireAutoCandidate: true,
-          enforceAttachmentRoot: true,
-          enforceSizeRule: true
+          requireAutoCandidate: false,
+          enforceAttachmentRoot: false,
+          enforceSizeRule: false,
+          skipExtensionFilter: true,
+          includeCoverReferences: true
         });
-        count += candidates.length;
-        for (const candidate of candidates.slice(0, 3)) {
-          if (samples.length < 20)
-            samples.push(`${file.path} -> ${candidate.file.path}`);
+        if (!candidates.length)
+          continue;
+        items.push({ noteFile: file, candidates });
+        for (const candidate of candidates) {
+          uniqueFiles.set(candidate.file.path, candidate.file);
+          const notePaths = referencesBySource.get(candidate.file.path) || /* @__PURE__ */ new Set();
+          notePaths.add(file.path);
+          referencesBySource.set(candidate.file.path, notePaths);
+          totalReferences += candidate.refs.length;
         }
       } catch (error) {
-        console.error(`Dry-run scan error for ${file.path}:`, error);
+        const message = error instanceof Error ? error.message : String(error);
+        scanFailures.push({ notePath: file.path, error: message });
+        console.error(`Vault scan error for ${file.path}:`, error);
       }
     }
-    notice.hide();
-    new DryRunModal(this.app, this, count, samples).open();
+    return {
+      items,
+      noteCount: items.length,
+      uniqueFileCount: uniqueFiles.size,
+      totalBytes: Array.from(uniqueFiles.values()).reduce((sum, file) => sum + file.stat.size, 0),
+      totalReferences,
+      scanFailures,
+      referencesBySource: Object.fromEntries(
+        Array.from(referencesBySource.entries()).map(([path, notePaths]) => [path, Array.from(notePaths)])
+      )
+    };
+  }
+  async runVaultBatch(plan, onProgress) {
+    this.ensureS3Settings();
+    const deleteMode = this.getEffectiveDeleteMode();
+    const uploadCache = /* @__PURE__ */ new Map();
+    const successfulNotes = /* @__PURE__ */ new Set();
+    const localRecords = /* @__PURE__ */ new Map();
+    const failures = plan.scanFailures ? [...plan.scanFailures] : [];
+    let replacedLinks = 0;
+    let notesChanged = 0;
+    for (let i = 0; i < plan.items.length; i++) {
+      const item = plan.items[i];
+      onProgress?.({
+        phase: "rewriting",
+        current: i,
+        total: plan.items.length,
+        notePath: item.noteFile.path,
+        label: item.noteFile.name
+      });
+      try {
+        const result = await this.replaceCandidates(item.noteFile, item.candidates, (state) => {
+          onProgress?.({
+            phase: state.phase === "trashing" ? "trashing" : state.phase === "scheduling" ? "scheduling" : state.phase === "uploading" || state.phase === "uploaded" ? "uploading" : "rewriting",
+            current: i,
+            total: plan.items.length,
+            notePath: item.noteFile.path,
+            label: state.label
+          });
+        }, {
+          deleteMode,
+          deferDeletion: true,
+          uploadCache
+        });
+        if (result.replaced > 0) {
+          successfulNotes.add(item.noteFile.path);
+          notesChanged += 1;
+          replacedLinks += result.replaced;
+          for (const record of result.localFiles || [])
+            localRecords.set(record.path, record);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push({ notePath: item.noteFile.path, error: message });
+        console.error(`Vault batch error for ${item.noteFile.path}:`, error);
+      }
+    }
+    const referencesBySource = /* @__PURE__ */ new Map();
+    if (plan.referencesBySource) {
+      for (const [sourcePath, notePaths] of Object.entries(plan.referencesBySource)) {
+        referencesBySource.set(sourcePath, new Set(notePaths));
+      }
+    } else {
+      for (const item of plan.items) {
+        for (const candidate of item.candidates) {
+          const refs = referencesBySource.get(candidate.file.path) || /* @__PURE__ */ new Set();
+          refs.add(item.noteFile.path);
+          referencesBySource.set(candidate.file.path, refs);
+        }
+      }
+    }
+    const deletable = Array.from(localRecords.values()).filter((record) => {
+      const refs = referencesBySource.get(record.path);
+      return !!refs && Array.from(refs).every((notePath) => successfulNotes.has(notePath));
+    });
+    const protectedFiles = localRecords.size - deletable.length;
+    let deletedFiles = 0;
+    let scheduledFiles = 0;
+    if (deleteMode === "immediate") {
+      onProgress?.({
+        phase: "trashing",
+        current: 0,
+        total: deletable.length,
+        notePath: "",
+        label: this.t("phaseTrashing")
+      });
+      for (let i = 0; i < deletable.length; i++) {
+        const record = deletable[i];
+        const notePath = this.firstReferencingNote(record.path, plan) || "vault-batch";
+        const file = this.app.vault.getAbstractFileByPath(record.path);
+        if (!(file instanceof import_obsidian7.TFile))
+          continue;
+        try {
+          await this.deleteLocalFileRecords({ path: notePath }, [record], "manual-delete");
+          deletedFiles += 1;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push({ notePath, error: `${record.path}: ${message}` });
+          console.error(`Vault batch delete error for ${record.path}:`, error);
+        }
+        onProgress?.({ phase: "trashing", current: i + 1, total: deletable.length, notePath, label: record.name });
+      }
+    } else if (deleteMode === "delayed") {
+      for (let i = 0; i < deletable.length; i++) {
+        const record = deletable[i];
+        const notePath = this.firstReferencingNote(record.path, plan) || "vault-batch";
+        const noteFile = this.app.vault.getAbstractFileByPath(notePath);
+        this.scheduleDelayedDeletes(noteFile instanceof import_obsidian7.TFile ? noteFile : { path: notePath }, [record]);
+        scheduledFiles += 1;
+        onProgress?.({ phase: "scheduling", current: i + 1, total: deletable.length, notePath, label: record.name });
+      }
+      await this.saveSettings();
+    }
+    onProgress?.({
+      phase: "done",
+      current: plan.items.length,
+      total: plan.items.length,
+      notePath: "",
+      label: this.t("phaseDone")
+    });
+    return {
+      notesScanned: plan.items.length + (plan.scanFailures?.length || 0),
+      notesChanged,
+      uniqueFiles: plan.uniqueFileCount,
+      uploadedFiles: uploadCache.size,
+      replacedLinks,
+      deletedFiles,
+      scheduledFiles,
+      protectedFiles,
+      pendingLocalFiles: deleteMode === "confirm" ? deletable : [],
+      failures
+    };
+  }
+  firstReferencingNote(sourcePath, plan) {
+    for (const item of plan.items) {
+      if (item.candidates.some((candidate) => candidate.file.path === sourcePath))
+        return item.noteFile.path;
+    }
+    return null;
   }
   async runAutoScan() {
-    if (!this.settings.enabled || !this.settings.autoScanEnabled)
+    if (!shouldScheduleAutoScan({
+      isMobile: this.isMobile,
+      enabled: this.settings.enabled,
+      autoScanEnabled: this.settings.autoScanEnabled,
+      running: this.autoScanRunning
+    }))
       return;
+    this.autoScanRunning = true;
     try {
       this.ensureS3Settings();
     } catch {
+      this.autoScanRunning = false;
+      return;
     }
-    const minBytes = Math.max(0, Number(this.settings.autoScanMinSizeMiB) || 0) * 1024 * 1024;
-    const files = this.app.vault.getMarkdownFiles();
-    let replaced = 0;
-    for (const file of files) {
-      try {
-        if (!this.isQuiet(file))
-          continue;
-        const candidates = await this.findCandidatesInNote(file, {
-          requireAutoCandidate: true,
-          enforceAttachmentRoot: true,
-          enforceSizeRule: true
-        });
-        const quietCandidates = candidates.filter((c) => {
-          if (!this.isQuiet(c.file))
-            return false;
-          if (minBytes > 0 && c.sizeBytes < minBytes)
-            return false;
-          return true;
-        });
-        if (quietCandidates.length === 0)
-          continue;
-        const result = await this.replaceCandidates(file, quietCandidates, null, {
-          deleteMode: "delayed"
-        });
-        replaced += result.replaced;
-      } catch (error) {
-        console.error(`Auto-scan error for ${file.path}:`, error);
+    try {
+      const files = this.app.vault.getMarkdownFiles();
+      let replaced = 0;
+      for (const file of files) {
+        try {
+          if (!this.isQuiet(file))
+            continue;
+          const candidates = await this.findCandidatesInNote(file, {
+            requireAutoCandidate: true,
+            enforceAttachmentRoot: true,
+            enforceSizeRule: true
+          });
+          const quietCandidates = candidates.filter((c) => {
+            if (!this.isQuiet(c.file))
+              return false;
+            if (!meetsAutoScanSize(c.sizeBytes, this.settings.autoScanMinSizeMiB))
+              return false;
+            return true;
+          });
+          if (quietCandidates.length === 0)
+            continue;
+          const result = await this.replaceCandidates(file, quietCandidates, null, {
+            deleteMode: "delayed"
+          });
+          replaced += result.replaced;
+        } catch (error) {
+          console.error(`Auto-scan error for ${file.path}:`, error);
+        }
       }
+      if (replaced > 0)
+        new import_obsidian7.Notice(this.t("autoScanReplaced", { count: replaced }));
+    } finally {
+      this.autoScanRunning = false;
     }
-    if (replaced > 0)
-      new import_obsidian5.Notice(this.t("autoScanReplaced", { count: replaced }));
   }
   isQuiet(file) {
-    const quietMs = Math.max(0, Number(this.settings.quietSeconds) || 0) * 1e3;
-    if (!quietMs)
-      return true;
-    return Date.now() - file.stat.mtime >= quietMs;
+    return isFileQuiet(file.stat.mtime, this.settings.quietSeconds);
   }
   async findCandidatesInNote(noteFile, options) {
     const text = await this.app.vault.read(noteFile);
@@ -1804,11 +2497,11 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
     const byKey = /* @__PURE__ */ new Map();
     for (const ref of refs) {
       const targetFile = this.resolveLinkedFile(ref.target, noteFile);
-      if (!targetFile || !(targetFile instanceof import_obsidian5.TFile))
+      if (!targetFile || !(targetFile instanceof import_obsidian7.TFile))
         continue;
       if (options.enforceAttachmentRoot !== false && !this.isUnderAttachmentRoot(targetFile))
         continue;
-      if (this.isCoverReference(text, ref))
+      if (!options.includeCoverReferences && this.isCoverReference(text, ref))
         continue;
       const ext = targetFile.extension.toLowerCase();
       if (ext === "md")
@@ -1846,15 +2539,15 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
       decoded = target;
     }
     const direct = this.app.vault.getAbstractFileByPath(decoded);
-    if (direct instanceof import_obsidian5.TFile)
+    if (direct instanceof import_obsidian7.TFile)
       return direct;
     const fromCache = this.app.metadataCache.getFirstLinkpathDest(decoded, noteFile.path);
-    if (fromCache instanceof import_obsidian5.TFile)
+    if (fromCache instanceof import_obsidian7.TFile)
       return fromCache;
     const noteDir = noteFile.parent ? noteFile.parent.path : "";
     const relativePath = noteDir ? `${noteDir}/${decoded}` : decoded;
     const relative = this.app.vault.getAbstractFileByPath(relativePath);
-    return relative instanceof import_obsidian5.TFile ? relative : null;
+    return relative instanceof import_obsidian7.TFile ? relative : null;
   }
   isUnderAttachmentRoot(file) {
     const root = trimSlashes(this.settings.attachmentRoot || "99 Attachments");
@@ -1880,7 +2573,8 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
     return file.stat.size >= minSize;
   }
   async replaceCandidates(noteFile, candidates, progress, options = {}) {
-    const deleteMode = options.deleteMode || this.settings.deletePolicy || "confirm";
+    const deleteMode = this.getEffectiveDeleteMode(options.deleteMode);
+    const deferDeletion = options.deferDeletion === true;
     this.ensureS3Settings();
     const originalText = await this.app.vault.read(noteFile);
     let noteChanged = false;
@@ -1888,11 +2582,12 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
     const replacementMap = /* @__PURE__ */ new Map();
     const uploaded = /* @__PURE__ */ new Map();
     const uploadedKeys = [];
+    const newlyCachedPaths = [];
     const uniqueFiles = new Set(candidates.map((c) => c.file.path)).size;
     let completedUploads = 0;
     try {
       for (const candidate of candidates) {
-        let upload = uploaded.get(candidate.file.path);
+        let upload = uploaded.get(candidate.file.path) || options.uploadCache?.get(candidate.file.path);
         if (!upload) {
           progress?.({
             phase: "uploading",
@@ -1903,6 +2598,10 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
           upload = await this.uploadCandidate(candidate);
           uploaded.set(candidate.file.path, upload);
           uploadedKeys.push(upload.key);
+          if (options.uploadCache) {
+            options.uploadCache.set(candidate.file.path, upload);
+            newlyCachedPaths.push(candidate.file.path);
+          }
           completedUploads += 1;
           progress?.({
             phase: "uploaded",
@@ -1911,6 +2610,7 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
             label: candidate.file.name
           });
         }
+        uploaded.set(candidate.file.path, upload);
         for (const ref of candidate.refs) {
           replacementMap.set(ref.raw, this.buildReplacement(ref, candidate, upload.publicUrl));
         }
@@ -1940,14 +2640,32 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
         await deleteS3Object(this.settings.s3, key).catch(() => {
         });
       }
+      for (const path of newlyCachedPaths) {
+        const cache = options.uploadCache;
+        if (cache && cache.get(path)?.key === uploaded.get(path)?.key)
+          cache.delete(path);
+      }
       throw error;
     }
-    if (!noteChanged)
-      return { replaced: 0 };
+    if (!noteChanged) {
+      return { replaced: 0, deleteMode, deletionStatus: "kept" };
+    }
     const localFiles = this.buildLocalFileRecords(candidates, uploaded);
     for (const candidate of candidates)
       replaced += candidate.refs.length;
-    if (deleteMode === "delayed") {
+    let deletionStatus = "kept";
+    if (deferDeletion) {
+      deletionStatus = "deferred";
+      for (const fileRecord of localFiles) {
+        this.addLog({
+          status: "replaced-awaiting-batch-delete",
+          notePath: noteFile.path,
+          sourcePath: fileRecord.path,
+          remoteUrl: fileRecord.remoteUrl,
+          trashed: false
+        });
+      }
+    } else if (deleteMode === "delayed") {
       progress?.({
         phase: "scheduling",
         current: completedUploads,
@@ -1955,6 +2673,7 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
         label: this.t("phaseScheduling")
       });
       this.scheduleDelayedDeletes(noteFile, localFiles);
+      deletionStatus = "scheduled";
     } else if (deleteMode === "immediate") {
       progress?.({
         phase: "trashing",
@@ -1963,6 +2682,7 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
         label: this.t("phaseTrashing")
       });
       await this.deleteLocalFileRecords(noteFile, localFiles, "manual-delete");
+      deletionStatus = "trashed";
     } else {
       for (const fileRecord of localFiles) {
         this.addLog({
@@ -1981,7 +2701,7 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
       total: uniqueFiles,
       label: this.t("phaseDone")
     });
-    return { replaced, localFiles };
+    return { replaced, localFiles, deleteMode, deletionStatus };
   }
   async uploadCandidate(candidate) {
     const binary = await this.app.vault.readBinary(candidate.file);
@@ -2004,6 +2724,10 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
       hash
     );
     return { key, publicUrl: buildPublicUrl(this.settings.s3.customDomainName, key) };
+  }
+  getEffectiveDeleteMode(requested) {
+    const mode = requested || this.settings.deletePolicy || "confirm";
+    return this.isMobile && mode === "delayed" ? "confirm" : mode;
   }
   buildReplacement(ref, candidate, publicUrl) {
     const encodedBase = encodeURI(publicUrl);
@@ -2059,7 +2783,7 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
   async deleteLocalFileRecords(noteFile, localFiles, status) {
     for (const fileRecord of localFiles) {
       const file = this.app.vault.getAbstractFileByPath(fileRecord.path);
-      if (!(file instanceof import_obsidian5.TFile)) {
+      if (!(file instanceof import_obsidian7.TFile)) {
         this.addLog({
           status: `${status}-missing-local-file`,
           notePath: noteFile.path,
@@ -2091,19 +2815,54 @@ var AttachmentImagebedManagerPlugin = class extends import_obsidian5.Plugin {
       return;
     const remaining = pending.filter((entry) => Number(entry.dueAt) > now);
     this.settings.pendingDeletes = remaining;
+    const retryDelayMs = Math.max(1, Number(this.settings.autoDeleteDelayHours) || 24) * 60 * 60 * 1e3;
     for (const entry of due) {
       try {
+        if (await this.isLocalFileReferenced(entry.sourcePath)) {
+          const retryAt = Date.now() + retryDelayMs;
+          remaining.push({ ...entry, dueAt: retryAt });
+          this.addLog({
+            status: "delayed-delete-protected-still-referenced",
+            notePath: entry.notePath,
+            sourcePath: entry.sourcePath,
+            remoteUrl: entry.remoteUrl,
+            trashed: false,
+            dueAt: new Date(retryAt).toISOString()
+          });
+          continue;
+        }
         const noteFile = this.app.vault.getAbstractFileByPath(entry.notePath);
         await this.deleteLocalFileRecords(
-          noteFile instanceof import_obsidian5.TFile ? noteFile : { path: entry.notePath },
+          noteFile instanceof import_obsidian7.TFile ? noteFile : { path: entry.notePath },
           [{ path: entry.sourcePath, name: basename2(entry.sourcePath), remoteUrl: entry.remoteUrl }],
           "delayed-delete"
         );
       } catch (error) {
+        remaining.push(entry);
         console.error(`Delayed delete failed for ${entry.sourcePath}:`, error);
       }
     }
+    this.settings.pendingDeletes = remaining;
     await this.saveSettings();
+  }
+  async isLocalFileReferenced(sourcePath) {
+    const source = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (!source || typeof source.path !== "string")
+      return false;
+    for (const noteFile of this.app.vault.getMarkdownFiles()) {
+      try {
+        const text = await this.app.vault.read(noteFile);
+        for (const ref of extractLocalRefs(text)) {
+          const target = this.resolveLinkedFile(ref.target, noteFile);
+          if (target?.path === sourcePath)
+            return true;
+        }
+      } catch (error) {
+        console.error(`Unable to verify references before deleting ${sourcePath} in ${noteFile.path}:`, error);
+        return true;
+      }
+    }
+    return false;
   }
   ensureS3Settings() {
     const s3 = this.settings.s3;
